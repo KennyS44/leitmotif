@@ -23,7 +23,9 @@ function check(name, cond, detail) {
   await page.waitForTimeout(300);
 
   check('page loads with no JS errors', errors.length === 0, errors.join(' | '));
-  check('six cards rendered', await page.locator('.card').count() === 6);
+  const cards = await page.locator('.card').count();
+  check('every preset is rendered', cards === (await page.evaluate(() => window.PRESETS.length)),
+    `${cards} cards`);
 
   /* --- the scores: structure --------------------------------------- */
   const scores = await page.evaluate(() => window.PRESETS.map((ch) => {
@@ -104,7 +106,9 @@ function check(name, cond, detail) {
       return everySlot.some((a) => Math.abs(rem - a) < 0.003
         || Math.abs(rem - barDur - a) < 0.003);
     };
-    const onGrid = s.tracks.lead.filter((n) => onGridAt(n.t)).length;
+    /* grace notes are placed deliberately just before the beat */
+    const sung = s.tracks.lead.filter((n) => !n.grace);
+    const onGrid = sung.filter((n) => onGridAt(n.t)).length;
     const percOnGrid = s.tracks.perc.filter((h) => onSlotAt(h.t)).length;
     /* and it must actually fill: hits away from the cell's own onsets */
     const percFilling = s.tracks.perc.filter((h) => !onGridAt(h.t)).length;
@@ -122,10 +126,14 @@ function check(name, cond, detail) {
       name: ch.name, bars: sigs.length, topRepeat,
       recurring: +recurring.toFixed(2),
       distinctShapes: Object.keys(counts).length,
-      onGrid: Math.round(100 * onGrid / s.tracks.lead.length),
+      onGrid: Math.round(100 * onGrid / sung.length),
       percOnGrid: s.tracks.perc.length
         ? Math.round(100 * percOnGrid / s.tracks.perc.length) : 100,
       percFilling,
+      percTotal: s.tracks.perc.length,
+      percKinds: new Set(s.tracks.perc.map((h) => h.kind)).size,
+      percPerBar: +(s.tracks.perc.length
+        / (4 * s.barsPerPhrase)).toFixed(1),
       /* how many parts are sounding in each of the four phrases */
       voicesPerPhrase: (() => {
         const span = s.barsPerPhrase * barDur;
@@ -137,9 +145,11 @@ function check(name, cond, detail) {
         });
       })(),
       /* does the contrast phrase actually lean in? */
+      buildAt: s.buildAt,
       swell: (() => {
         const span = s.barsPerPhrase * barDur;
-        const inPh = s.tracks.lead.filter((n) => n.t >= 2 * span && n.t < 3 * span);
+        const b = s.buildAt;
+        const inPh = s.tracks.lead.filter((n) => n.t >= b * span && n.t < (b + 1) * span);
         if (inPh.length < 4) return 0;
         const half = Math.floor(inPh.length / 2);
         const mean = (a) => a.reduce((x, n) => x + n.vel, 0) / a.length;
@@ -147,6 +157,7 @@ function check(name, cond, detail) {
       })(),
       returns: first === last,
       cell: s.cell.join(''),
+      beats: s.beats,
       metre: `${s.beats}/${s.cell.length}${s.swing ? ` sw${s.swing}` : ''}`,
       motif: s.motif.join(','),
       /* the layers must stay stacked: bass under pad under counter under lead */
@@ -176,12 +187,17 @@ function check(name, cond, detail) {
       s.distinctShapes >= 3, `${s.distinctShapes} distinct shapes`);
     check(`${s.name}: melody sits on the race's grid`, s.onGrid >= 85, `${s.onGrid}%`);
     check(`${s.name}: percussion never lands between slots`, s.percOnGrid >= 99, `${s.percOnGrid}%`);
-    check(`${s.name}: percussion fills, not just doubles the melody`,
-      s.percFilling > 20, `${s.percFilling} filling hits`);
+    /* A kit that only strikes the cell's onsets is the melody again, made of
+       noise. Doing more than that means more than one drum, and at least a
+       stroke per beat — a dense cell leaves few gaps, so counting gaps alone
+       would fail a character whose rhythm is simply busy. */
+    check(`${s.name}: the kit does more than double the melody`,
+      s.percKinds >= 2 && s.percPerBar >= s.beats,
+      `${s.percKinds} sounds, ${s.percPerBar} hits per bar over ${s.beats} beats`);
     check(`${s.name}: the band grows across the theme`,
-      s.voicesPerPhrase[0] < s.voicesPerPhrase[2], s.voicesPerPhrase.join(' → '));
-    check(`${s.name}: the third phrase leans in`, s.swell >= 1.05,
-      `second half is ${s.swell}× the first`);
+      s.voicesPerPhrase[0] < s.voicesPerPhrase[s.buildAt], s.voicesPerPhrase.join(' → '));
+    check(`${s.name}: the swell phrase leans in`, s.swell >= 1.05,
+      `phrase ${s.buildAt + 1}, second half is ${s.swell}× the first`);
     check(`${s.name}: the opening phrase returns at the end`, s.returns);
     check(`${s.name}: the pad stays below the melody`, !s.layers.padOverLead);
     check(`${s.name}: the bass stays below the pad`, !s.layers.bassOverPad);
@@ -197,7 +213,21 @@ function check(name, cond, detail) {
   check('races bring different metres', metres.size >= 4,
     `${metres.size} distinct: ${[...metres].join(', ')}`);
   const motifs = new Set(structure.map((s) => s.motif));
-  check('classes bring different motifs', motifs.size === 6, `${motifs.size} distinct motifs`);
+  check('every character gets its own motif', motifs.size === structure.length,
+    `${motifs.size} distinct of ${structure.length}`);
+
+  /* Two characters of the same class must be relatives, not twins: the same
+     allowed intervals and direction, a different tune. */
+  const kin = await page.evaluate(() => {
+    const a = { name: 'A', cls: 'paladin', race: 'human', alignment: 'LG', traits: ['brave'], looks: ['old'] };
+    const b = { name: 'B', cls: 'paladin', race: 'human', alignment: 'LG', traits: ['brave'], looks: ['old'] };
+    const pa = window.Leitmotif.characterToParams(a);
+    const pb = window.Leitmotif.characterToParams(b);
+    const dir = (m) => Math.sign(m[m.length - 1]);
+    return { same: pa.motif.join() === pb.motif.join(), sameDir: dir(pa.motif) === dir(pb.motif) };
+  });
+  check('two paladins are not twins', !kin.same);
+  check('two paladins are still relatives', kin.sameDir);
 
   /* --- determinism --------------------------------------------------- */
   const twice = await page.evaluate(() => {

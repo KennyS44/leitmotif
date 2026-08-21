@@ -234,3 +234,14 @@ button:disabled:hover { border-color: var(--line); color: var(--text); }
   font-size: 14px;
 }
 .foot__fine a { color: var(--accent); }
+
+/* roll button, and the cards it produces */
+.btn--roll {
+  margin-top: 16px;
+  width: 100%;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.btn--roll:hover { background: var(--accent-soft); }
+
+.card--rolled { border-color: var(--accent); }

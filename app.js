@@ -138,11 +138,12 @@ const VOICE_NAMES = {
 const EN = {
   ui: {
     kicker: 'Prototype · step 1 of the project',
-    lede: 'Six D&amp;D characters, six themes, generated in your browser from nothing but the character sheet. No interface yet, no accounts, no polish — this page exists to answer one question: <strong>can you hear the difference?</strong>',
-    note: 'Play them one after another. Each theme runs about 40 seconds and is the same every time you press play.',
+    lede: 'Twelve D&amp;D characters, twelve themes, generated in your browser from nothing but the character sheet. No interface yet, no accounts, no polish — this page exists to answer one question: <strong>can you hear the difference?</strong>',
+    note: 'Play them one after another. Each theme runs about 40 seconds and is the same every time you press play. The button below rolls a character nobody chose — that one shows what the rules actually do, rather than what I decided to show.',
     play: 'Play theme',
     stop: 'Stop',
     save: 'Download MP3',
+    roll: 'Roll a stranger',
     rendering: 'Rendering…',
     footTitle: 'What is actually happening',
     foot: [
@@ -233,41 +234,45 @@ function tagList(ch) {
   return items.map((t) => `<li>${t}</li>`).join('');
 }
 
-function sheetLine(ch) {
+function sheetLine(ch, p) {
   const one = (k) => label('classes', k, CLASSES[k].label);
   const cls = one(ch.cls) + (ch.second ? ` / ${one(ch.second)}` : '');
-  return `${label('races', ch.race, RACES[ch.race].label)} ${cls}`
+  const oath = p.subLabel ? `, ${label('subclasses', ch.sub, p.subLabel)}` : '';
+  return `${label('races', ch.race, RACES[ch.race].label)} ${cls}${oath}`
     + ` · ${label('alignments', ch.alignment, ALIGNMENTS[ch.alignment].label)}`;
+}
+
+function cardFor(ch) {
+  const p = characterToParams(ch);
+  const shown = preset(ch);
+  const card = document.createElement('article');
+  card.className = 'card';
+  card.innerHTML = `
+    <h2 class="card__name">${shown.name}</h2>
+    <p class="card__sheet">${sheetLine(ch, p)}</p>
+    ${shown.blurb ? `<p class="card__blurb">${shown.blurb}</p>` : ''}
+    <ul class="tags">${tagList(ch)}</ul>
+    <div class="card__actions">
+      <button class="btn--play" type="button">${T('play')}</button>
+      <button class="btn--save" type="button">${T('save')}</button>
+    </div>
+    <div class="bar"><span class="bar__fill"></span></div>
+    <p class="card__why">${why(p)}</p>
+  `;
+  const playBtn = card.querySelector('.btn--play');
+  playBtn.addEventListener('click', () => play(ch, card, playBtn));
+  card.querySelector('.btn--save')
+    .addEventListener('click', (e) => download(ch, e.currentTarget));
+  return card;
 }
 
 function build() {
   stop();
   const list = document.getElementById('list');
   list.innerHTML = '';
-  window.PRESETS.forEach((ch) => {
-    const p = characterToParams(ch);
-    const shown = preset(ch);
-    const card = document.createElement('article');
-    card.className = 'card';
-    card.innerHTML = `
-      <h2 class="card__name">${shown.name}</h2>
-      <p class="card__sheet">${sheetLine(ch)}</p>
-      <p class="card__blurb">${shown.blurb}</p>
-      <ul class="tags">${tagList(ch)}</ul>
-      <div class="card__actions">
-        <button class="btn--play" type="button">${T('play')}</button>
-        <button class="btn--save" type="button">${T('save')}</button>
-      </div>
-      <div class="bar"><span class="bar__fill"></span></div>
-      <p class="card__why">${why(p)}</p>
-    `;
-    const playBtn = card.querySelector('.btn--play');
-    playBtn.addEventListener('click', () => play(ch, card, playBtn));
-    card.querySelector('.btn--save')
-      .addEventListener('click', (e) => download(ch, e.currentTarget));
-    list.appendChild(card);
-  });
+  window.PRESETS.forEach((ch) => list.appendChild(cardFor(ch)));
 
+  document.getElementById('roll').textContent = T('roll');
   document.documentElement.lang = lang;
   document.getElementById('kicker').innerHTML = T('kicker');
   document.getElementById('lede').innerHTML = T('lede');
@@ -282,6 +287,17 @@ function build() {
     b.setAttribute('aria-pressed', String(b.dataset.lang === lang));
   });
 }
+
+/* A rolled stranger goes to the top of the list, so what the rules do to a
+   character nobody chose is the first thing on the page. */
+document.getElementById('roll').addEventListener('click', () => {
+  const list = document.getElementById('list');
+  const card = cardFor(window.rollCharacter());
+  card.classList.add('card--rolled');
+  list.insertBefore(card, list.firstChild);
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  card.querySelector('.btn--play').focus();
+});
 
 document.querySelector('.lang').addEventListener('click', (e) => {
   const pick = e.target.closest('button');

@@ -55,16 +55,26 @@ const ALIGNMENTS = {
   CE: { label: 'Chaotic Evil',    mode: 'locrian',    sync: 0.50, tension:  0.50, cadence: 0.35 },
 };
 
-/* Class owns the motif and the instruments that play it.
+/* Class owns a FAMILY of motifs, not one motif.
  *
- * `motif` is a handful of scale steps relative to the tonic — the shape the
- * whole theme is built from, stated and varied rather than re-rolled. A fourth
- * upward reads as a call to arms; small steps that keep doubling back read as
- * someone moving quietly; a line that only ever sinks reads as a bad bargain.
+ * A single stored melody per class is the thing that makes a generator feel
+ * like a menu: every paladin in the world would get the same tune, and picking
+ * "paladin" would be picking a prepared file. So a class instead states the
+ * rules a paladin's melody has to obey, and which melody inside those rules
+ * this particular character gets is decided by the whole sheet.
  *
- * `lead` carries it, `pad` is the bed underneath, `perc` is the kit. A subclass
- * or second class brings its own motif in as a fork. */
-/* Cleric and Paladin are deliberately far apart now, on the reading that their
+ *   steps   — the intervals this class is allowed to move by
+ *   contour — where the line has to end up: rising, falling, arched, level
+ *   target  — how far it must reach (the peak, for an arch)
+ *   len     — how many notes
+ *
+ * Two paladins now come out related but not identical: same allowed intervals,
+ * same upward reach, different melody. That is family resemblance, which is
+ * what "class" should sound like.
+ *
+ * `lead` carries it, `pad` is the bed underneath, `perc` is the kit.
+ *
+ * Cleric and Paladin are deliberately far apart now, on the reading that their
  * official descriptions all but hand over: a cleric "reaches out to the divine
  * magic of the Outer Planes and channels it", a paladin is "united by oaths"
  * and "lives on the front lines". One receives power from outside, the other
@@ -74,19 +84,75 @@ const ALIGNMENTS = {
  * with a real attack, a marching kit, a motif that reaches up a fourth and
  * lands. Wisdom keeps a melody even; Charisma makes it reach. */
 const CLASSES = {
-  fighter:    { label: 'Fighter',    motif: [0, 4, 3, 0],     lead: 'brass',  pad: 'strings', perc: 'martial', tempo:  +6, dyn: +0.10 },
-  paladin:    { label: 'Paladin',    motif: [0, 4, 2, 4, 7],  lead: 'brass',  pad: 'choir',   perc: 'martial', tempo:  -4, dyn: +0.14, leap: +0.15, cadence: +0.20, attack: 0.80 },
-  barbarian:  { label: 'Barbarian',  motif: [0, 1, 0, -4],    lead: 'horn',   pad: 'dark',    perc: 'heavy',   tempo:  +4, dyn: +0.15, rough: 0.42, reg: -12, attack: 0.70 },
-  cleric:     { label: 'Cleric',     motif: [0, 2, 3, 2],     lead: 'organ',  pad: 'choir',   perc: 'frame',   tempo: -12, rev: +0.20, leap: -0.15, cadence: +0.15, attack: 1.50 },
-  druid:      { label: 'Druid',      motif: [0, 1, 3, 1],     lead: 'whistle',pad: 'air',     perc: 'frame',   tempo:  -2, orn: +0.20 },
-  ranger:     { label: 'Ranger',     motif: [0, 2, 4, 3],     lead: 'fiddle', pad: 'strings', perc: 'frame',   tempo:  +2, cellMod: -0.10 },
-  rogue:      { label: 'Rogue',      motif: [0, -1, 1, -2],   lead: 'pizz',   pad: 'dark',    perc: 'light',   tempo:  +6, sync: +0.20, cellMod: -0.10 },
-  bard:       { label: 'Bard',       motif: [0, 2, 1, 4, 2],  lead: 'lute',   pad: 'strings', perc: 'light',   tempo:  +8, orn: +0.20 },
-  monk:       { label: 'Monk',       motif: [0, 2, 0, -2],    lead: 'flute',  pad: 'air',     perc: 'wood',    tempo:  +4, cellMod: -0.10 },
-  wizard:     { label: 'Wizard',     motif: [0, 3, 5, 7],     lead: 'harp',   pad: 'glass',   perc: 'wood',    tempo:  -4, rev: +0.15 },
-  sorcerer:   { label: 'Sorcerer',   motif: [0, 4, 6, 3],     lead: 'glass',  pad: 'air',     perc: 'light',   tempo:  +2, orn: +0.25, rev: +0.10 },
-  warlock:    { label: 'Warlock',    motif: [0, -1, -3, -2],  lead: 'bell',   pad: 'dark',    perc: 'frame',   tempo:  -6, tension: +0.25, reg: -5 },
-  artificer:  { label: 'Artificer',  motif: [0, 1, 2, 0],     lead: 'strings',pad: 'organ',   perc: 'wood',    tempo:  +4, sync: +0.20 },
+  fighter:    { label: 'Fighter',    family: { steps: [2, 3, 4, -1, -2],  contour: 'arch', target: [3, 5],   len: [4, 4] },    lead: 'brass',  pad: 'strings', perc: 'martial', tempo:  +6, dyn: +0.10 },
+  paladin:    { label: 'Paladin',    family: { steps: [2, 3, 4, 5],       contour: 'rise', target: [4, 7],   len: [4, 5] },    lead: 'brass',  pad: 'choir',   perc: 'martial', tempo:  -4, dyn: +0.14, leap: +0.15, cadence: +0.20, attack: 0.80 },
+  barbarian:  { label: 'Barbarian',  family: { steps: [1, -1, -3, -4],    contour: 'fall', target: [-5, -2], len: [4, 4] },  lead: 'horn',   pad: 'dark',    perc: 'heavy',   tempo:  +4, dyn: +0.15, rough: 0.42, reg: -12, attack: 0.70 },
+  cleric:     { label: 'Cleric',     family: { steps: [1, 2, -1, -2],     contour: 'arch', target: [2, 3],   len: [4, 4] },     lead: 'organ',  pad: 'choir',   perc: 'frame',   tempo: -12, rev: +0.20, leap: -0.15, cadence: +0.15, attack: 1.50 },
+  druid:      { label: 'Druid',      family: { steps: [1, 2, 3, -1],      contour: 'arch', target: [2, 4],   len: [4, 5] },      lead: 'whistle',pad: 'air',     perc: 'frame',   tempo:  -2, orn: +0.20 },
+  ranger:     { label: 'Ranger',     family: { steps: [1, 2, 3, -1],      contour: 'rise', target: [3, 5],   len: [4, 4] },     lead: 'fiddle', pad: 'strings', perc: 'frame',   tempo:  +2, cellMod: -0.10 },
+  rogue:      { label: 'Rogue',      family: { steps: [-1, 1, -2, 2],     contour: 'flat', target: [-2, 2],  len: [4, 5] },      lead: 'pizz',   pad: 'dark',    perc: 'light',   tempo:  +6, sync: +0.20, cellMod: -0.10 },
+  bard:       { label: 'Bard',       family: { steps: [1, 2, 3, 4, -1],   contour: 'arch', target: [3, 5],   len: [5, 5] },       lead: 'lute',   pad: 'strings', perc: 'light',   tempo:  +8, orn: +0.20 },
+  monk:       { label: 'Monk',       family: { steps: [2, -2, 1, -1],     contour: 'flat', target: [-1, 1],  len: [4, 4] },       lead: 'flute',  pad: 'air',     perc: 'wood',    tempo:  +4, cellMod: -0.10 },
+  wizard:     { label: 'Wizard',     family: { steps: [2, 3, 1],          contour: 'rise', target: [5, 8],   len: [4, 4] },     lead: 'harp',   pad: 'glass',   perc: 'wood',    tempo:  -4, rev: +0.15 },
+  sorcerer:   { label: 'Sorcerer',   family: { steps: [3, 2, 4, -1],      contour: 'rise', target: [4, 7],   len: [4, 4] },   lead: 'glass',  pad: 'air',     perc: 'light',   tempo:  +2, orn: +0.25, rev: +0.10 },
+  warlock:    { label: 'Warlock',    family: { steps: [-1, -2, -3, 1],    contour: 'fall', target: [-5, -2], len: [4, 4] },    lead: 'bell',   pad: 'dark',    perc: 'frame',   tempo:  -6, tension: +0.25, reg: -5 },
+  artificer:  { label: 'Artificer',  family: { steps: [1, 2, -1],         contour: 'rise', target: [1, 3],   len: [4, 5] },  lead: 'strings',pad: 'organ',   perc: 'wood',    tempo:  +4, sync: +0.20 },
+};
+
+/* A subclass is not a second class, and it should not sound like one.
+ *
+ * A second class brings its own motif and its own voice — the character is two
+ * things at once. A subclass bends the one motif the character already has: it
+ * is the same paladin, sworn to a different oath. So a subclass replaces the
+ * tail of the motif and nudges a few parameters, and that is all. The head of
+ * the phrase still says "paladin"; the end of it says which kind.
+ *
+ * `tail` overwrites the last steps of the class motif — the small fork. */
+const SUBCLASSES = {
+  paladin: {
+    devotion:  { label: 'Oath of Devotion',     tail: [7, 4],  cadence: +0.15, rev: +0.10, hue: 'choir' },
+    ancients:  { label: 'Oath of the Ancients', tail: [6, 4],  orn: +0.15, tempo: -4, hue: 'flute' },
+    vengeance: { label: 'Oath of Vengeance',    tail: [3, -1], tension: +0.20, attack: 0.75, dyn: +0.08 },
+    conquest:  { label: 'Oath of Conquest',     tail: [1, -3], tension: +0.25, reg: -5, dyn: +0.12, rough: 0.15 },
+  },
+  cleric: {
+    life:      { label: 'Life Domain',      tail: [4, 2],  rev: +0.15, tension: -0.10, hue: 'choir' },
+    light:     { label: 'Light Domain',     tail: [5, 7],  reg: +5, rev: +0.15, hue: 'glass' },
+    tempest:   { label: 'Tempest Domain',   tail: [2, -3], dyn: +0.15, rough: 0.20, perc: 'heavy' },
+    trickery:  { label: 'Trickery Domain',  tail: [1, -1], sync: +0.20, orn: +0.15, hue: 'pizz' },
+  },
+  wizard: {
+    evocation: { label: 'Evocation',    tail: [7, 9],  dyn: +0.12, attack: 0.75 },
+    illusion:  { label: 'Illusion',     tail: [6, 4],  orn: +0.20, rev: +0.15, hue: 'glass' },
+    necromancy:{ label: 'Necromancy',   tail: [2, -2], tension: +0.25, reg: -7, hue: 'dark' },
+  },
+  rogue: {
+    thief:     { label: 'Thief',            tail: [-2, 0], sync: +0.15, cellMod: +0.10 },
+    assassin:  { label: 'Assassin',         tail: [-3, -1], tension: +0.20, dyn: -0.10, attack: 0.70 },
+    trickster: { label: 'Arcane Trickster', tail: [2, 0],  orn: +0.20, hue: 'glass' },
+  },
+  barbarian: {
+    berserker: { label: 'Path of the Berserker', tail: [1, -5], dyn: +0.12, rough: 0.15 },
+    totem:     { label: 'Path of the Totem',     tail: [3, 0],  hue: 'whistle', orn: +0.15 },
+    zealot:    { label: 'Path of the Zealot',    tail: [4, 2],  dyn: +0.10, hue: 'choir' },
+  },
+  warlock: {
+    fiend:     { label: 'The Fiend',        tail: [-4, -2], tension: +0.20, rough: 0.15 },
+    archfey:   { label: 'The Archfey',      tail: [1, 3],   orn: +0.25, hue: 'harp', reg: +5 },
+    ancientone:{ label: 'The Great Old One', tail: [-1, -5], tension: +0.30, rev: +0.15, hue: 'dark' },
+  },
+  bard: {
+    lore:      { label: 'College of Lore',  tail: [4, 2], orn: +0.20, hue: 'harp' },
+    valor:     { label: 'College of Valour', tail: [5, 7], dyn: +0.12, perc: 'martial' },
+  },
+  ranger: {
+    hunter:    { label: 'Hunter',        tail: [4, 2], dyn: +0.10 },
+    beast:     { label: 'Beast Master',  tail: [3, 1], hue: 'whistle', orn: +0.15 },
+  },
+  druid: {
+    land:      { label: 'Circle of the Land', tail: [3, 1], rev: +0.12, hue: 'harp' },
+    moon:      { label: 'Circle of the Moon', tail: [1, -3], dyn: +0.12, rough: 0.15, perc: 'heavy' },
+  },
 };
 
 /* Race owns the rhythm — and not only which slots are struck, but the shape of
@@ -235,10 +301,23 @@ function characterToParams(ch) {
   (ch.traits || []).slice(0, 5).forEach((t) => soft(TRAITS[t]));
   (ch.looks || []).slice(0, 5).forEach((t) => soft(LOOKS[t]));
 
-  /* Motif and cell are not blended — they are chosen. Averaging two motifs
-     would give a third one belonging to nobody, which is precisely the mush we
-     are trying to avoid. */
-  p.motif = cls.motif;
+  /* A subclass bends the class it belongs to: the head of the motif is kept,
+     the tail is replaced, and a few parameters move. Applied before the motif
+     is read so that the fork is part of the theme rather than decoration. */
+  const sub = ch.sub && SUBCLASSES[ch.cls] ? SUBCLASSES[ch.cls][ch.sub] : null;
+  if (sub) applyEntry(p, sub);
+
+  /* The melody is drawn from the class's family using the whole sheet as the
+     seed, so two paladins are relatives rather than copies. Cells and voices
+     are still chosen outright — averaging two of those gives a third belonging
+     to nobody, which is the mush we are avoiding. */
+  p.seed = characterSeed(ch);
+  p.motif = drawMotif(cls.family, p.seed);
+  if (sub && sub.tail) {
+    const head = p.motif.slice(0, Math.max(2, p.motif.length - sub.tail.length));
+    p.motif = head.concat(sub.tail);
+  }
+  p.subLabel = sub ? sub.label : null;
   p.cell = race.cell;
   p.beats = race.beats || 4;
   p.swing = race.swing || 0;
@@ -246,16 +325,17 @@ function characterToParams(ch) {
      organ for dwarves — which appears for part of the theme and then leaves.
      Rhythm alone turned out to be too quiet a signal for "which people is
      this": the ear reaches for timbre first. */
-  p.hue = race.hue || null;
+  /* the oath speaks louder than the bloodline: a subclass instrument wins */
+  p.hue = (sub && sub.hue) || race.hue || null;
 
   /* A second class brings its own motif in as a fork: a short deviation in a
      second voice, so the multiclass is heard as "and also", not as a blur. */
   const second = ch.second ? CLASSES[ch.second] : null;
   p.lead = cls.lead;
   p.pad = cls.pad;
-  p.perc = cls.perc || (second && second.perc) || null;
+  p.perc = (sub && sub.perc) || cls.perc || (second && second.perc) || null;
   p.counter = second && second.lead !== cls.lead ? second.lead : null;
-  p.branchMotif = second ? second.motif : null;
+  p.branchMotif = second ? drawMotif(second.family, (p.seed ^ 0x51ed270b) >>> 0) : null;
   /* A race colour that happens to be the class's own lead adds nothing — a
      dwarf cleric would be organ answered by organ. Fall back to the first
      instrument nobody else in the band is using. */
@@ -293,12 +373,69 @@ function characterToParams(ch) {
   p.rev = clamp(p.rev, 0.05, 0.75);
   p.rise = clamp(p.rise, -0.50, 0.60);
 
-  p.seed = characterSeed(ch);
   return p;
+}
+
+/* Draws one melody out of a class's family, using the character's own seed.
+ *
+ * Generate a handful of candidates, score each against the family's contour and
+ * reach, keep the best. Scoring rather than rejecting means it always returns
+ * something — a family with a strict target never leaves a character silent. */
+function drawMotif(family, seed) {
+  const rand = seeded(seed);
+  const pick = (arr) => arr[Math.floor(rand() * arr.length)];
+  let best = null;
+  let bestScore = Infinity;
+
+  for (let attempt = 0; attempt < 24; attempt += 1) {
+    const len = family.len[0]
+      + Math.floor(rand() * (family.len[1] - family.len[0] + 1));
+    const m = [0];
+    for (let i = 1; i < len; i += 1) m.push(m[i - 1] + pick(family.steps));
+
+    const end = m[m.length - 1];
+    const peak = Math.max(...m);
+    const low = Math.min(...m);
+    const [lo, hi] = family.target;
+    let score = 0;
+
+    if (family.contour === 'rise') {
+      score += Math.max(0, lo - end) + Math.max(0, end - hi);
+      if (end <= 0) score += 4;
+    } else if (family.contour === 'fall') {
+      score += Math.max(0, lo - end) + Math.max(0, end - hi);
+      if (end >= 0) score += 4;
+    } else if (family.contour === 'arch') {
+      score += Math.max(0, lo - peak) + Math.max(0, peak - hi);
+      score += Math.abs(end) > 2 ? Math.abs(end) - 2 : 0;
+    } else {
+      score += Math.max(0, Math.abs(peak - low) - 4);
+      score += Math.max(0, lo - end) + Math.max(0, end - hi);
+    }
+    /* a melody that repeats one note is inside the rules and still no good */
+    if (new Set(m).size < Math.min(3, m.length)) score += 3;
+
+    if (score < bestScore) { bestScore = score; best = m; }
+    if (score === 0) break;
+  }
+  return best;
 }
 
 /* Same character -> same number -> same theme, on any machine, forever.
    That is what makes a shared link play the tune the sender heard. */
+/* A small deterministic generator, kept here so the map can draw a melody
+   without depending on the player that comes after it. */
+function seeded(seed) {
+  let a = seed >>> 0;
+  return function next() {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function hashString(str) {
   let h = 2166136261;
   for (let i = 0; i < str.length; i += 1) {
@@ -317,5 +454,5 @@ function characterSeed(ch) {
   return hashString(parts.join('|'));
 }
 
-window.Mapping = { characterToParams, characterSeed, hashString,
+window.Mapping = { characterToParams, characterSeed, hashString, SUBCLASSES,
                    CLASSES, RACES, ALIGNMENTS, TRAITS, LOOKS, MODES };

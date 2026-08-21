@@ -66,12 +66,15 @@ const FORM = [
  *
  * So the four phrases are staged. The theme starts nearly bare, gathers, builds
  * through the contrast phrase, and comes back full. */
-const ARRANGE = [
-  { pad: false, counter: false, hue: false, kit: 'spare' },   /* A   — melody and bass */
-  { pad: true,  counter: false, hue: true,  kit: 'full'  },   /* A'  — chords, race colour */
-  { pad: true,  counter: true,  hue: true,  kit: 'full', build: true },  /* B — build */
-  { pad: true,  counter: true,  hue: false, kit: 'full'  },   /* A'' — full return */
-];
+function staging(phrase, buildAt, bare) {
+  return {
+    pad: phrase >= 1,
+    counter: phrase >= buildAt,
+    hue: phrase >= 1 && phrase !== 3,
+    kit: phrase < bare ? 'spare' : 'full',
+    build: phrase === buildAt,
+  };
+}
 
 /* Two progressions only, and the home one repeats in three phrases out of
    four. Harmony that keeps coming back is what lets the ear hear a return. */
@@ -104,7 +107,9 @@ function buildCell(p) {
   while (budget < 0) {
     const weak = [];
     cell.forEach((v, i) => { if (v === 1) weak.push(i); });
-    if (!weak.length) break;
+    /* a bar with one onset is not a rhythm, it is a metronome — traits may
+       thin the cell but never strip it below two places to put a note */
+    if (!weak.length || cell.filter(Boolean).length <= 2) break;
     cell[weak[Math.floor(rand() * weak.length)]] = 0;
     budget += 1;
   }
@@ -210,9 +215,16 @@ function composeScore(p) {
 
   const tracks = { lead: [], counter: [], hue: [], pad: [], bass: [], perc: [] };
 
-  /* the progression that best matches how settled this character is */
-  const homePick = HOME_CHORDS.slice().sort(
-    (a, b) => Math.abs(a.settled - p.cadence) - Math.abs(b.settled - p.cadence))[0];
+  /* The shape of the piece is the character's too, not a constant. Which
+     progression, where the swell falls and how long the bare opening lasts all
+     come from the sheet — otherwise every theme wears the same skeleton and the
+     differences between them are only ever paint. */
+  const shape = rng((p.seed ^ 0x2545f491) >>> 0);
+  const ranked = HOME_CHORDS.slice().sort(
+    (a, b) => Math.abs(a.settled - p.cadence) - Math.abs(b.settled - p.cadence));
+  const homePick = shape() < 0.65 ? ranked[0] : ranked[1];
+  const buildAt = shape() < 0.5 ? 1 : 2;
+  const bare = shape() < 0.35 ? 2 : 1;
 
   /* A bar of five beats lasts a quarter longer than a bar of four, and sixteen
      of them run past a minute. Wide metres get three-bar phrases so that every
@@ -222,7 +234,7 @@ function composeScore(p) {
 
   for (let ph = 0; ph < PHRASES; ph += 1) {
     const form = FORM[ph];
-    const plan = ARRANGE[ph];
+    const plan = staging(ph, buildAt, bare);
     const roles = trim(form.roles);
     const chords = trim(form.chords === 'home' ? homePick.degrees : AWAY_CHORDS);
     /* only the contrast phrase moves; the A phrases all sit at the same height
@@ -400,7 +412,8 @@ function composeScore(p) {
   }
 
   const duration = endAt + hold + 1.6;
-  return { duration, barDur, beats, barsPerPhrase, cell, motif, swing, endAt, tracks };
+  return { duration, barDur, beats, barsPerPhrase, cell, motif, swing, endAt,
+           buildAt, bare, tracks };
 }
 
 /* The pad's voicing, and the one place the mode's colour is guaranteed to be
