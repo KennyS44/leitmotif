@@ -93,9 +93,20 @@ function check(name, cond, detail) {
     sigs.forEach((sig) => { counts[sig] = (counts[sig] || 0) + 1; });
     const topRepeat = Math.max(...Object.values(counts));
 
-    /* everything should sit on the race's grid */
+    /* The melody sits on the cell's onsets. The kit is allowed every slot of
+       the metre — that is how it fills the space the melody leaves — but it may
+       never land between slots. */
+    const everySlot = s.cell
+      .map((v, i) => i * slot + (i % 2 ? s.swing * slot * 0.5 : 0));
+    const onSlotAt = (time) => {
+      const rem = time % barDur;
+      return everySlot.some((a) => Math.abs(rem - a) < 0.003
+        || Math.abs(rem - barDur - a) < 0.003);
+    };
     const onGrid = s.tracks.lead.filter((n) => onGridAt(n.t)).length;
-    const percOnGrid = s.tracks.perc.filter((h) => onGridAt(h.t)).length;
+    const percOnGrid = s.tracks.perc.filter((h) => onSlotAt(h.t)).length;
+    /* and it must actually fill: hits away from the cell's own onsets */
+    const percFilling = s.tracks.perc.filter((h) => !onGridAt(h.t)).length;
 
     /* The opening phrase should return at the end: A A' B A''. The very last
        bar is excluded — it carries the final cadence and is meant to differ. */
@@ -113,6 +124,26 @@ function check(name, cond, detail) {
       onGrid: Math.round(100 * onGrid / s.tracks.lead.length),
       percOnGrid: s.tracks.perc.length
         ? Math.round(100 * percOnGrid / s.tracks.perc.length) : 100,
+      percFilling,
+      /* how many parts are sounding in each of the four phrases */
+      voicesPerPhrase: (() => {
+        const span = s.barsPerPhrase * barDur;
+        return [0, 1, 2, 3].map((ph) => {
+          const live = (arr) => arr.some((n) => n.t >= ph * span - 1e-6
+            && n.t < (ph + 1) * span - 1e-6);
+          return ['lead', 'bass', 'pad', 'counter', 'hue', 'perc']
+            .filter((k) => live(s.tracks[k])).length;
+        });
+      })(),
+      /* does the contrast phrase actually lean in? */
+      swell: (() => {
+        const span = s.barsPerPhrase * barDur;
+        const inPh = s.tracks.lead.filter((n) => n.t >= 2 * span && n.t < 3 * span);
+        if (inPh.length < 4) return 0;
+        const half = Math.floor(inPh.length / 2);
+        const mean = (a) => a.reduce((x, n) => x + n.vel, 0) / a.length;
+        return +(mean(inPh.slice(half)) / mean(inPh.slice(0, half))).toFixed(2);
+      })(),
       returns: first === last,
       cell: s.cell.join(''),
       metre: `${s.beats}/${s.cell.length}${s.swing ? ` sw${s.swing}` : ''}`,
@@ -143,7 +174,13 @@ function check(name, cond, detail) {
     check(`${s.name}: the theme is not all repeats either`,
       s.distinctShapes >= 3, `${s.distinctShapes} distinct shapes`);
     check(`${s.name}: melody sits on the race's grid`, s.onGrid >= 85, `${s.onGrid}%`);
-    check(`${s.name}: percussion sits on the same grid`, s.percOnGrid >= 95, `${s.percOnGrid}%`);
+    check(`${s.name}: percussion never lands between slots`, s.percOnGrid >= 99, `${s.percOnGrid}%`);
+    check(`${s.name}: percussion fills, not just doubles the melody`,
+      s.percFilling > 20, `${s.percFilling} filling hits`);
+    check(`${s.name}: the band grows across the theme`,
+      s.voicesPerPhrase[0] < s.voicesPerPhrase[2], s.voicesPerPhrase.join(' → '));
+    check(`${s.name}: the third phrase leans in`, s.swell >= 1.05,
+      `second half is ${s.swell}× the first`);
     check(`${s.name}: the opening phrase returns at the end`, s.returns);
     check(`${s.name}: the pad stays below the melody`, !s.layers.padOverLead);
     check(`${s.name}: the bass stays below the pad`, !s.layers.bassOverPad);

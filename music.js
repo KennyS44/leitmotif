@@ -55,6 +55,24 @@ const FORM = [
   { roles: ['state', 'vary', 'state', 'close'], lift: 0, chords: 'home' },
 ];
 
+/* Who is playing in each phrase.
+ *
+ * Open any arranged song in a sequencer and the striking thing is how much of
+ * the grid is empty: drums start late, the bass waits, layers arrive and leave
+ * at section boundaries, and usually only one quiet background part runs the
+ * whole length. A band where every instrument plays every bar is not an
+ * arrangement — it is everyone talking at once, which is what the earlier
+ * version sounded like.
+ *
+ * So the four phrases are staged. The theme starts nearly bare, gathers, builds
+ * through the contrast phrase, and comes back full. */
+const ARRANGE = [
+  { pad: false, counter: false, hue: false, kit: 'spare' },   /* A   — melody and bass */
+  { pad: true,  counter: false, hue: true,  kit: 'full'  },   /* A'  — chords, race colour */
+  { pad: true,  counter: true,  hue: true,  kit: 'full', build: true },  /* B — build */
+  { pad: true,  counter: true,  hue: false, kit: 'full'  },   /* A'' — full return */
+];
+
 /* Two progressions only, and the home one repeats in three phrases out of
    four. Harmony that keeps coming back is what lets the ear hear a return. */
 const HOME_CHORDS = [
@@ -190,7 +208,7 @@ function composeScore(p) {
   const counterCentre = p.root + COUNTER + stack - dip;
   const leadCentre = p.root + LEAD + stack - dip;
 
-  const tracks = { lead: [], counter: [], pad: [], bass: [], perc: [] };
+  const tracks = { lead: [], counter: [], hue: [], pad: [], bass: [], perc: [] };
 
   /* the progression that best matches how settled this character is */
   const homePick = HOME_CHORDS.slice().sort(
@@ -204,6 +222,7 @@ function composeScore(p) {
 
   for (let ph = 0; ph < PHRASES; ph += 1) {
     const form = FORM[ph];
+    const plan = ARRANGE[ph];
     const roles = trim(form.roles);
     const chords = trim(form.chords === 'home' ? homePick.degrees : AWAY_CHORDS);
     /* only the contrast phrase moves; the A phrases all sit at the same height
@@ -216,6 +235,9 @@ function composeScore(p) {
       const role = roles[b];
       const chordDeg = chords[b];
       const lastBar = ph === PHRASES - 1 && b === barsPerPhrase - 1;
+      /* the contrast phrase leans in bar by bar instead of arriving already
+         loud — the swell is the only place in the piece that goes anywhere */
+      const swell = plan.build ? 0.78 + 0.22 * (b / (barsPerPhrase - 1)) : 1;
 
       /* --- harmony: one chord per bar, held across bars that repeat ---
          Close position only, no octave doubling on top: a spread chord reaches
@@ -225,7 +247,7 @@ function composeScore(p) {
       const nextDeg = b + 1 < barsPerPhrase ? chords[b + 1] : -99;
       const held = deg === nextDeg;   /* same chord next bar: do not re-strike */
       const prevDeg = b > 0 ? chords[b - 1] : -99;
-      if (deg !== prevDeg) {
+      if (plan.pad && deg !== prevDeg) {
         const tones = padVoicing(p, deg);
         const len = (held ? barDur * 2 : barDur) - OVERLAP;
         tones.forEach((semi) => {
@@ -295,7 +317,7 @@ function composeScore(p) {
           /* the swing between accented and unaccented notes is small on
              purpose: a line whose loudness keeps jumping stops being heard as
              one line and starts being heard as separate events */
-          vel: p.dyn * (accent ? 1.0 : 0.86),
+          vel: p.dyn * (accent ? 1.0 : 0.86) * swell,
         });
 
         /* ornaments only decorate accents, and only sometimes — scattered
@@ -311,28 +333,50 @@ function composeScore(p) {
         }
       });
 
-      /* --- the second class: a fork off the motif -------------------
-         Consecutive onsets, one register, one steady level. A handful of notes
-         scattered across a bar are heard as so many foreign objects poking into
-         the melody; the same notes in a row are heard as a second voice. */
-      if (branch && (role === 'turn' || (role === 'vary' && !useBranch))) {
+      /* --- the second class: an answer, not a rival ------------------
+         The fork used to run beside the melody on its own notes, and two lines
+         moving at once are heard as two tunes that happen to share a room. It
+         now speaks in the melody's silences and joins it on the bar's last
+         accent, a third below. Answering and agreeing are what make two voices
+         sound like one piece of music. */
+      if (plan.counter && branch && role !== 'close') {
         const fork = shapeMotif(branch, 'turn');
-        const start = onsets.findIndex((s) => cell[s] === 1);
-        const run = onsets.slice(Math.max(0, start), Math.max(0, start) + fork.length);
-        run.forEach((slot, i) => {
-          const next = onsets[onsets.indexOf(slot) + 1];
-          const gap = ((next === undefined ? SLOTS : next) - slot) * slotDur;
+        const gaps = cell.map((v, s) => (v ? -1 : s)).filter((s) => s > 0);
+        gaps.slice(0, fork.length).forEach((slot, i) => {
           tracks.counter.push({
             t: t + timeOf(slot),
             midi: Math.max(floor, counterCentre + scalePitch(p, lift + fork[i])),
-            dur: Math.max(MIN_NOTE, gap * p.legato) + OVERLAP,
-            vel: p.dyn * 0.46,
+            dur: Math.max(MIN_NOTE, slotDur * 1.5 * p.legato) + OVERLAP,
+            vel: p.dyn * 0.44 * swell,
+          });
+        });
+        const together = tracks.lead[tracks.lead.length - 1];
+        if (together && !together.grace) {
+          tracks.counter.push({
+            t: together.t,
+            midi: Math.max(floor, together.midi - 5 - (p.tension > 0.5 ? 1 : 0)),
+            dur: together.dur,
+            vel: together.vel * 0.55,
+          });
+        }
+      }
+
+      /* --- the race's own instrument, coming and going -------------- */
+      if (plan.hue && p.hue) {
+        const marks = cell.map((v, s) => (v === 2 ? s : -1)).filter((s) => s >= 0);
+        marks.forEach((slot, i) => {
+          tracks.hue.push({
+            t: t + timeOf(slot),
+            midi: padRoot + 12 + scalePitch(p, deg + (i % 2 ? 4 : 0)),
+            dur: barDur * 0.5,
+            vel: p.dyn * 0.34 * swell,
           });
         });
       }
 
-      /* --- percussion: the same cell, played by the kit ------------- */
-      addPerc(tracks.perc, p, t, timeOf, cell, bar);
+      /* --- percussion --------------------------------------------- */
+      addPerc(tracks.perc, p, t, timeOf, cell, beats, plan, swell,
+              b === barsPerPhrase - 1);
     }
   }
 
@@ -353,42 +397,50 @@ function padVoicing(p, deg) {
   return [...new Set(out.map((s) => ((s % 12) + 12) % 12))];
 }
 
-/* The kit reads the cell rather than a pattern of its own, which is what makes
-   the drums sound like they are playing with the tune and not next to it. */
-function addPerc(out, p, t, timeOf, cell, bar) {
+/* A kit that only strikes where the melody strikes is not a kit — it is the
+ * melody again, an octave down and made of noise, which is why it read as "the
+ * opening note of a chord and nothing else".
+ *
+ * A real kit does three jobs at once and they are on different clocks: a low
+ * drum marks the character's accents, a higher one answers on the back of the
+ * beat, and something small keeps the subdivision ticking underneath. The third
+ * job is what fills the silence the melody leaves; without it there is a floor
+ * missing under the whole piece.
+ */
+function addPerc(out, p, t, timeOf, cell, beats, plan, swell, lastOfPhrase) {
   if (!p.perc) return;
-  const v = 0.42 + p.dyn * 0.25;
+  const slots = cell.length;
+  const perBeat = slots / beats;
+  const v = (0.42 + p.dyn * 0.25) * swell;
   const push = (slot, kind, vel) => out.push({ t: t + timeOf(slot), kind, vel });
 
+  const LOW = { martial: 'kick', heavy: 'kick', light: 'kick', frame: 'frame', wood: 'wood' };
+  const BACK = { martial: 'snare', heavy: 'tom', light: 'snare', frame: 'frame', wood: 'wood' };
+  const TICK = { martial: 'shaker', heavy: 'shaker', light: 'shaker', frame: 'shaker', wood: 'wood' };
+
+  /* 1. the character's own accents, on the low drum */
   cell.forEach((val, s) => {
-    if (!val) return;
-    const accent = val === 2;
-    switch (p.perc) {
-      case 'martial':
-        push(s, accent ? 'kick' : 'snare', v * (accent ? 1.0 : 0.6));
-        break;
-      case 'heavy':
-        push(s, accent ? 'kick' : 'tom', v * (accent ? 1.15 : 0.6));
-        break;
-      case 'light':
-        push(s, accent ? 'kick' : 'shaker', v * (accent ? 0.7 : 0.35));
-        break;
-      case 'frame':
-        push(s, 'frame', v * (accent ? 1.0 : 0.55));
-        break;
-      case 'wood':
-        push(s, 'wood', v * (accent ? 0.6 : 0.35));
-        break;
-      default:
-        break;
-    }
+    if (val === 2) push(s, LOW[p.perc], v * (p.perc === 'heavy' ? 1.15 : 1.0));
   });
 
-  /* an extra stroke on the last onset of every second bar, so the four-bar
-     phrase has a seam you can hear — still on the grid, like everything else */
-  if (bar % 2 === 1 && (p.perc === 'martial' || p.perc === 'heavy')) {
-    const marks = cell.map((v2, i) => (v2 ? i : -1)).filter((i) => i >= 0);
-    push(marks[marks.length - 1], p.perc === 'heavy' ? 'tom' : 'snare', v * 0.5);
+  /* 2. the back of the beat — its own clock, not the cell's */
+  if (plan.kit === 'full' && Number.isInteger(perBeat)) {
+    for (let b2 = 1; b2 < beats; b2 += 2) push(b2 * perBeat, BACK[p.perc], v * 0.62);
+  }
+
+  /* 3. the subdivision underneath, quiet, filling what the melody leaves */
+  if (plan.kit === 'full') {
+    for (let s = 0; s < slots; s += 1) {
+      if (cell[s] === 2) continue;
+      const weak = s % 2 === 1;
+      push(s, TICK[p.perc], v * (weak ? 0.16 : 0.24));
+    }
+  }
+
+  /* 4. a fill on the way out of a phrase, so the seam is heard */
+  if (lastOfPhrase && plan.kit === 'full') {
+    push(slots - 2, BACK[p.perc], v * 0.7);
+    push(slots - 1, BACK[p.perc], v * 0.85);
   }
 }
 
@@ -594,6 +646,92 @@ function playNote(ctx, dest, voice, note, p) {
       env(ctx, out, t, note.dur, vel * 0.30, 0.09 * atk, 0.18);
       break;
     }
+    case 'harp': {
+      /* plain and clean: fundamental plus two quiet partials, struck and left
+         to ring. No feedback delay line — a real plucked-string model needs a
+         delay shorter than one render block at these pitches, which browsers
+         will not give inside a loop. */
+      const stop = t + 2.2;
+      [[1, 0.30], [2, 0.10], [3, 0.05]].forEach(([mult, amp]) => {
+        const o = detuneOsc(ctx, mult === 1 ? 'triangle' : 'sine', f * mult, 0, t, stop);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(vel * amp, t + 0.004 * atk);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 1.4 / mult + note.dur * 0.3);
+        o.connect(g); g.connect(out);
+      });
+      break;
+    }
+    case 'fiddle': {
+      const stop = t + note.dur + 0.3;
+      const filt = ctx.createBiquadFilter();
+      filt.type = 'lowpass'; filt.Q.value = 1.6;
+      filt.frequency.setValueAtTime(2800, t);
+      filt.connect(out);
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 5.8;
+      const amt = ctx.createGain(); amt.gain.value = 9;
+      lfo.connect(amt); lfo.start(t); lfo.stop(stop);
+      [-6, 7].forEach((c) => {
+        const o = detuneOsc(ctx, 'sawtooth', f, c, t, stop);
+        amt.connect(o.detune);
+        o.connect(filt);
+      });
+      /* a little rosin on the attack, which is most of what says "fiddle" */
+      const scrape = ctx.createBufferSource();
+      scrape.buffer = noiseBuffer(ctx);
+      const sg = ctx.createGain();
+      sg.gain.setValueAtTime(vel * 0.10, t);
+      sg.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+      scrape.connect(sg); sg.connect(filt);
+      scrape.start(t); scrape.stop(t + 0.08);
+      env(ctx, out, t, note.dur, vel * 0.26, 0.05 * atk, 0.22);
+      break;
+    }
+    case 'organ': {
+      const stop = t + note.dur + 0.25;
+      [[1, 0.22], [2, 0.13], [3, 0.08], [4, 0.06], [6, 0.03]].forEach(([mult, amp]) => {
+        const o = detuneOsc(ctx, 'sine', f * mult, 0, t, stop);
+        const g = ctx.createGain();
+        g.gain.value = amp;
+        o.connect(g); g.connect(out);
+      });
+      env(ctx, out, t, note.dur, vel * 0.68, 0.04 * atk, 0.14);
+      break;
+    }
+    case 'whistle': {
+      /* breathier and lower than the flute: more air than tone, which is what
+         gives the ancient, mournful reading */
+      const stop = t + note.dur + 0.3;
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 4.2;
+      const amt = ctx.createGain(); amt.gain.value = 12;
+      lfo.connect(amt); lfo.start(t); lfo.stop(stop);
+      const o = detuneOsc(ctx, 'sine', f, 0, t, stop);
+      amt.connect(o.detune);
+      o.connect(out);
+      const breath = ctx.createBufferSource();
+      breath.buffer = noiseBuffer(ctx); breath.loop = true;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass'; bp.frequency.value = f * 1.6; bp.Q.value = 3;
+      const bg = ctx.createGain(); bg.gain.value = vel * 0.16;
+      breath.connect(bp); bp.connect(bg); bg.connect(out);
+      breath.start(t); breath.stop(stop);
+      env(ctx, out, t, note.dur, vel * 0.26, 0.14 * atk, 0.22);
+      break;
+    }
+    case 'glass': {
+      const stop = t + 2.4;
+      [[1, 0.24], [2.01, 0.09], [3.02, 0.04]].forEach(([mult, amp]) => {
+        const o = detuneOsc(ctx, 'sine', f * mult, 0, t, stop);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(vel * amp, t + 0.22 * atk);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1 + note.dur * 0.4);
+        o.connect(g); g.connect(out);
+      });
+      break;
+    }
     default:
       simple([0], 2000, 0.05, 0.2, 'triangle');
   }
@@ -676,6 +814,7 @@ function renderScore(ctx, score, p, startAt) {
 
   const leadBus = bus(1.0);
   const counterBus = bus(0.62);
+  const hueBus = bus(0.50);
   const padBus = bus(0.52);
   const bassBus = bus(0.80);
   const percBus = ctx.createGain();
@@ -688,6 +827,7 @@ function renderScore(ctx, score, p, startAt) {
   const shift = (n) => ({ ...n, t: n.t + t0 });
   score.tracks.lead.forEach((n) => playNote(ctx, leadBus, p.lead, shift(n), p));
   score.tracks.counter.forEach((n) => playNote(ctx, counterBus, p.counter || p.lead, shift(n), p));
+  score.tracks.hue.forEach((n) => playNote(ctx, hueBus, p.hue || 'harp', shift(n), p));
   score.tracks.pad.forEach((n) => playNote(ctx, padBus, p.pad, shift(n), p));
   score.tracks.bass.forEach((n) => playNote(ctx, bassBus, p.drone ? 'dark' : 'strings', shift(n), p));
   score.tracks.perc.forEach((h) => playHit(ctx, percBus, shift(h)));

@@ -121,7 +121,8 @@ async function download(ch, button) {
 const VOICE_NAMES = {
   brass: 'brass', horn: 'low horns', strings: 'bowed strings', choir: 'choir',
   air: 'airy pad', dark: 'dark pad', lute: 'lute', pizz: 'pizzicato',
-  bell: 'bells', flute: 'flute',
+  bell: 'bells', flute: 'flute', harp: 'harp', fiddle: 'fiddle',
+  organ: 'organ', whistle: 'low whistle', glass: 'glass',
 };
 
 /* The race's bar of rhythm, drawn: a filled circle is an accent, a hollow one
@@ -138,7 +139,8 @@ const COLOUR_NAMES = ['', 'flat second', 'flat third', 'sharp fourth',
 function why(p) {
   const bits = [
     `<b>${VOICE_NAMES[p.lead] || p.lead}</b> over ${VOICE_NAMES[p.pad] || p.pad}`,
-    p.counter ? `with <b>${VOICE_NAMES[p.counter]}</b> forking off` : null,
+    p.counter ? `with <b>${VOICE_NAMES[p.counter]}</b> answering` : null,
+    p.hue ? `<b>${VOICE_NAMES[p.hue]}</b> arriving partway` : null,
     p.colour === null
       ? `<b>${p.modeName}</b> mode on a pedal`
       : `<b>${p.modeName}</b> mode, leaning on its <b>${COLOUR_NAMES[p.colour]}</b>`,

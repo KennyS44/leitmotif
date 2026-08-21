@@ -97,27 +97,27 @@ const CLASSES = {
  * kit plays all of it — one grid, so the parts sound like one band. */
 const RACES = {
   human:      { label: 'Human',      beats: 4, cell: [2, 0, 1, 0, 2, 0, 1, 0] },
-  elf:        { label: 'Elf',        beats: 4, cell: [2, 0, 0, 1, 0, 0, 2, 0, 0, 1, 0, 0],
+  elf:        { label: 'Elf', hue: 'harp',        beats: 4, cell: [2, 0, 0, 1, 0, 0, 2, 0, 0, 1, 0, 0],
                 reg: +7,  orn: +0.25, legato: 1.40, rev: +0.10 },
-  dwarf:      { label: 'Dwarf',      beats: 4, swing: 0.18, cell: [2, 0, 0, 2, 0, 0, 1, 0],
+  dwarf:      { label: 'Dwarf', hue: 'organ',      beats: 4, swing: 0.18, cell: [2, 0, 0, 2, 0, 0, 1, 0],
                 reg: -12, orn: -0.10, dyn: +0.10, drone: true },
-  halfling:   { label: 'Halfling',   beats: 4, swing: 0.33, cell: [2, 0, 1, 1, 0, 1, 0, 1],
+  halfling:   { label: 'Halfling', hue: 'fiddle',   beats: 4, swing: 0.33, cell: [2, 0, 1, 1, 0, 1, 0, 1],
                 reg: +5,  tempo: +10, legato: 0.65, leap: +0.10 },
-  gnome:      { label: 'Gnome',      beats: 5, cell: [2, 1, 0, 1, 1, 0, 1, 1, 0, 1],
+  gnome:      { label: 'Gnome', hue: 'glass',      beats: 5, cell: [2, 1, 0, 1, 1, 0, 1, 1, 0, 1],
                 reg: +7,  tempo: +12, orn: +0.30, leap: +0.15, legato: 0.70 },
-  tiefling:   { label: 'Tiefling',   beats: 5, swing: 0.12, cell: [2, 0, 1, 0, 0, 1, 1, 0, 1, 0],
+  tiefling:   { label: 'Tiefling', hue: 'whistle',   beats: 5, swing: 0.12, cell: [2, 0, 1, 0, 0, 1, 1, 0, 1, 0],
                 tension: +0.25, orn: +0.15, reg: -3 },
-  dragonborn: { label: 'Dragonborn', beats: 3, cell: [2, 0, 0, 0, 1, 0],
+  dragonborn: { label: 'Dragonborn', hue: 'organ', beats: 3, cell: [2, 0, 0, 0, 1, 0],
                 reg: -5,  tempo: -8, dyn: +0.15 },
-  halforc:    { label: 'Half-Orc',   beats: 4, cell: [2, 0, 0, 1, 2, 0, 0, 1],
+  halforc:    { label: 'Half-Orc', hue: 'horn',   beats: 4, cell: [2, 0, 0, 1, 2, 0, 0, 1],
                 reg: -7,  tempo: +4, dyn: +0.15, orn: -0.15 },
-  halfelf:    { label: 'Half-Elf',   beats: 4, cell: [2, 0, 1, 0, 1, 0, 2, 0, 0, 1, 0, 0],
+  halfelf:    { label: 'Half-Elf', hue: 'harp',   beats: 4, cell: [2, 0, 1, 0, 1, 0, 2, 0, 0, 1, 0, 0],
                 reg: +3,  orn: +0.12, legato: 1.15 },
-  tabaxi:     { label: 'Tabaxi',     beats: 4, swing: 0.40, cell: [0, 1, 1, 0, 2, 0, 1, 1],
+  tabaxi:     { label: 'Tabaxi', hue: 'fiddle',     beats: 4, swing: 0.40, cell: [0, 1, 1, 0, 2, 0, 1, 1],
                 tempo: +10, sync: +0.20, legato: 0.60, leap: +0.15 },
-  goliath:    { label: 'Goliath',    beats: 3, cell: [2, 0, 0, 1, 0, 0],
+  goliath:    { label: 'Goliath', hue: 'whistle',    beats: 3, cell: [2, 0, 0, 1, 0, 0],
                 reg: -10, tempo: -6, dyn: +0.20 },
-  aasimar:    { label: 'Aasimar',    beats: 4, cell: [2, 0, 0, 0, 1, 0, 2, 0, 0, 1, 0, 0],
+  aasimar:    { label: 'Aasimar', hue: 'glass',    beats: 4, cell: [2, 0, 0, 0, 1, 0, 2, 0, 0, 1, 0, 0],
                 reg: +5,  rev: +0.20, tension: -0.10 },
 };
 
@@ -233,6 +233,11 @@ function characterToParams(ch) {
   p.cell = race.cell;
   p.beats = race.beats || 4;
   p.swing = race.swing || 0;
+  /* The race also brings one instrument of its own — a harp for elves, an
+     organ for dwarves — which appears for part of the theme and then leaves.
+     Rhythm alone turned out to be too quiet a signal for "which people is
+     this": the ear reaches for timbre first. */
+  p.hue = race.hue || null;
 
   /* A second class brings its own motif in as a fork: a short deviation in a
      second voice, so the multiclass is heard as "and also", not as a blur. */
