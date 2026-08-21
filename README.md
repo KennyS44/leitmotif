@@ -24,23 +24,35 @@ The split is deliberate. The synthesiser can be replaced without touching the
 character logic, and the character logic can be re-tuned without breaking the
 sound.
 
-## The rule that keeps it audible
+## Motif and cell
 
-Every field of the sheet owns a **different** musical axis. If two fields both
-pushed on tempo, their changes would cancel and the user would hear nothing when
-editing either one.
+Two things carry the identity of a theme, and everything else dresses them.
+
+The **motif** comes from the class: a handful of scale steps that is stated,
+answered, turned and brought back, never re-invented. Repetition is how music
+becomes memorable — a melody assembled note by note from well-tuned statistics
+cannot be remembered, because nothing in it ever comes back.
+
+The **cell** comes from the race: one bar of rhythm, eight slots, accents
+marked. The melody takes its onsets from it, the bass plays its accents and the
+kit plays all of it. One grid for every part is what makes them sound like a
+band rather than three processes running side by side.
+
+Over the top sits a form — four phrases, **A A' B A''** — so that forty seconds
+has a shape and not merely a length.
 
 | Field | Owns |
 |---|---|
-| Class | the instruments — who is playing |
-| Second class / subclass | a counter-melody voice |
-| Race | rhythm, register, ornament |
+| Class | the motif, and the instruments that play it |
+| Second class / subclass | a short fork off the motif, in a second voice |
+| Race | the rhythmic cell, register, articulation |
 | Alignment | mode and harmonic tension |
-| Traits (up to 5) | how the melody moves — loud or quiet, smooth or jagged |
-| Looks (up to 5) | timbre and room |
+| Traits (up to 5) | how full the cell is, how wide the motif reaches, dynamics |
+| Looks (up to 5) | register, timbre, room |
 
 Required fields set the shape; optional tags only colour it, at 60% weight, so
-no single tag can turn a paladin into a bard.
+no single tag can turn a paladin into a bard. Motifs and cells are **chosen,
+never blended** — averaging two motifs gives a third belonging to nobody.
 
 ## Determinism
 
@@ -52,9 +64,14 @@ one day store a two-kilobyte recipe instead of a multi-megabyte recording.
 ## Tests
 
 `node test.js` against the page on port 20302 renders all six themes offline and
-checks the structure, the determinism, the audio itself and the layout at 390px —
-44 assertions. It cannot tell whether the music is *good*; that judgement is the
-point of the prototype and belongs to a human.
+checks 83 assertions: that a bar shape recurs and most of the theme is built
+from recurring material, that every melody note and every drum hit lands on the
+race's grid, that the opening phrase returns at the end, that the same sheet
+gives the same score twice while one changed trait changes it, that no character
+is drowned out by another, and that the page holds up at 390px.
+
+It cannot tell whether the music is *good*. That judgement is the point of the
+prototype and belongs to a human.
 
 ## Not here yet
 

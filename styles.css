@@ -202,3 +202,10 @@ button:disabled:hover { border-color: var(--line); color: var(--text); }
 @media (prefers-reduced-motion: reduce) {
   * { transition-duration: 1ms !important; }
 }
+
+/* the race's bar of rhythm, drawn under each card */
+.card__why .beat {
+  font-family: var(--serif);
+  letter-spacing: 0.14em;
+  color: var(--accent);
+}

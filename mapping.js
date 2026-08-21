@@ -10,12 +10,16 @@
  * If two fields both pushed on, say, tempo, their changes would cancel and the
  * user would hear nothing when editing either one.
  *
- *   class      -> instruments      (who is playing)
- *   subclass   -> a second voice   (the counter-melody)
- *   race       -> rhythm, register, ornament
+ *   class      -> the motif itself, and the instruments playing it
+ *   subclass   -> a short fork off the motif, in a second voice
+ *   race       -> the rhythmic cell everything else is built on
  *   alignment  -> mode and harmonic tension
- *   traits     -> how the melody behaves
- *   looks      -> timbre and space
+ *   traits     -> how densely the cell is filled, how wide the motif reaches
+ *   looks      -> register, timbre and space
+ *
+ * The two that carry identity are the motif and the cell. Everything else
+ * dresses them: a trait can widen or thin the theme, but it cannot invent a
+ * different one, and nothing is allowed to fight the pulse the race set.
  */
 
 /* Modes, ordered bright to dark. Alignment picks one of them. */
@@ -43,61 +47,71 @@ const ALIGNMENTS = {
   CE: { label: 'Chaotic Evil',    mode: 'locrian',    sync: 0.50, tension:  0.50, cadence: 0.35 },
 };
 
-/* Class owns the instruments. `lead` carries the tune, `pad` is the bed
-   underneath, `perc` is the pulse. A subclass or second class adds `counter`. */
+/* Class owns the motif and the instruments that play it.
+ *
+ * `motif` is a handful of scale steps relative to the tonic — the shape the
+ * whole theme is built from, stated and varied rather than re-rolled. A fourth
+ * upward reads as a call to arms; small steps that keep doubling back read as
+ * someone moving quietly; a line that only ever sinks reads as a bad bargain.
+ *
+ * `lead` carries it, `pad` is the bed underneath, `perc` is the kit. A subclass
+ * or second class brings its own motif in as a fork. */
 const CLASSES = {
-  fighter:    { label: 'Fighter',    lead: 'brass',  pad: 'strings', perc: 'martial', tempo:  +6, dyn: +0.10 },
-  paladin:    { label: 'Paladin',    lead: 'brass',  pad: 'choir',   perc: 'martial', tempo:  -4, dyn: +0.10 },
-  barbarian:  { label: 'Barbarian',  lead: 'horn',   pad: 'strings', perc: 'heavy',   tempo:  +4, dyn: +0.15, rough: 0.30, reg: -12 },
-  cleric:     { label: 'Cleric',     lead: 'strings',pad: 'choir',   perc: null,      tempo:  -8, dyn:  0.00, rev: +0.15 },
-  druid:      { label: 'Druid',      lead: 'flute',  pad: 'air',     perc: 'frame',   tempo:  -2, orn: +0.20 },
-  ranger:     { label: 'Ranger',     lead: 'flute',  pad: 'strings', perc: 'frame',   tempo:  +2, dens: -0.05 },
-  rogue:      { label: 'Rogue',      lead: 'pizz',   pad: 'air',     perc: 'light',   tempo:  +6, sync: +0.20, dens: -0.10 },
-  bard:       { label: 'Bard',       lead: 'lute',   pad: 'strings', perc: 'light',   tempo:  +8, orn: +0.20 },
-  monk:       { label: 'Monk',       lead: 'flute',  pad: 'air',     perc: 'wood',    tempo:  +4, dens: -0.10 },
-  wizard:     { label: 'Wizard',     lead: 'bell',   pad: 'air',     perc: null,      tempo:  -4, rev: +0.15 },
-  sorcerer:   { label: 'Sorcerer',   lead: 'bell',   pad: 'air',     perc: 'light',   tempo:  +2, orn: +0.25, rev: +0.10 },
-  warlock:    { label: 'Warlock',    lead: 'bell',   pad: 'dark',    perc: null,      tempo:  -6, tension: +0.25, reg: -5 },
-  artificer:  { label: 'Artificer',  lead: 'lute',   pad: 'air',     perc: 'wood',    tempo:  +4, sync: +0.20 },
+  fighter:    { label: 'Fighter',    motif: [0, 4, 3, 0],     lead: 'brass',  pad: 'strings', perc: 'martial', tempo:  +6, dyn: +0.10 },
+  paladin:    { label: 'Paladin',    motif: [0, 4, 2, 4, 7],  lead: 'brass',  pad: 'choir',   perc: 'martial', tempo:  -4, dyn: +0.10 },
+  barbarian:  { label: 'Barbarian',  motif: [0, 1, 0, -4],    lead: 'horn',   pad: 'strings', perc: 'heavy',   tempo:  +4, dyn: +0.15, rough: 0.30, reg: -12 },
+  cleric:     { label: 'Cleric',     motif: [0, 2, 4, 2],     lead: 'strings',pad: 'choir',   perc: 'frame',   tempo:  -8, rev: +0.15 },
+  druid:      { label: 'Druid',      motif: [0, 1, 3, 1],     lead: 'flute',  pad: 'air',     perc: 'frame',   tempo:  -2, orn: +0.20 },
+  ranger:     { label: 'Ranger',     motif: [0, 2, 4, 3],     lead: 'flute',  pad: 'strings', perc: 'frame',   tempo:  +2, cellMod: -0.10 },
+  rogue:      { label: 'Rogue',      motif: [0, -1, 1, -2],   lead: 'pizz',   pad: 'air',     perc: 'light',   tempo:  +6, sync: +0.20, cellMod: -0.10 },
+  bard:       { label: 'Bard',       motif: [0, 2, 1, 4, 2],  lead: 'lute',   pad: 'strings', perc: 'light',   tempo:  +8, orn: +0.20 },
+  monk:       { label: 'Monk',       motif: [0, 2, 0, -2],    lead: 'flute',  pad: 'air',     perc: 'wood',    tempo:  +4, cellMod: -0.10 },
+  wizard:     { label: 'Wizard',     motif: [0, 3, 5, 7],     lead: 'bell',   pad: 'air',     perc: 'wood',    tempo:  -4, rev: +0.15 },
+  sorcerer:   { label: 'Sorcerer',   motif: [0, 4, 6, 3],     lead: 'bell',   pad: 'air',     perc: 'light',   tempo:  +2, orn: +0.25, rev: +0.10 },
+  warlock:    { label: 'Warlock',    motif: [0, -1, -3, -2],  lead: 'bell',   pad: 'dark',    perc: 'frame',   tempo:  -6, tension: +0.25, reg: -5 },
+  artificer:  { label: 'Artificer',  motif: [0, 1, 2, 0],     lead: 'lute',   pad: 'air',     perc: 'wood',    tempo:  +4, sync: +0.20 },
 };
 
-/* Race owns rhythm, register and ornament — the cultural accent of the tune. */
+/* Race owns the rhythmic cell: one bar, eight slots, 2 = accent, 1 = note,
+   0 = rest. The melody takes its onsets from it, the bass plays its accents and
+   the kit plays all of it — which is what makes the parts sound like one band.
+   Register and articulation come along for the ride. */
 const RACES = {
-  human:      { label: 'Human' },
-  elf:        { label: 'Elf',        reg: +7,  orn: +0.25, legato: 1.40, rev: +0.10 },
-  dwarf:      { label: 'Dwarf',      reg: -12, orn: -0.10, dyn: +0.10, drone: true },
-  halfling:   { label: 'Halfling',   reg: +5,  tempo: +10, legato: 0.65, dens: +0.15, leap: +0.10 },
-  gnome:      { label: 'Gnome',      reg: +7,  tempo: +12, orn: +0.30, leap: +0.15, legato: 0.70 },
-  tiefling:   { label: 'Tiefling',   tension: +0.25, orn: +0.15, reg: -3 },
-  dragonborn: { label: 'Dragonborn', reg: -5,  tempo: -8, dyn: +0.15, dens: -0.20 },
-  halforc:    { label: 'Half-Orc',   reg: -7,  tempo: +4, dyn: +0.15, orn: -0.15 },
-  halfelf:    { label: 'Half-Elf',   reg: +3,  orn: +0.12, legato: 1.15 },
-  tabaxi:     { label: 'Tabaxi',     tempo: +10, sync: +0.20, legato: 0.60, leap: +0.15 },
-  goliath:    { label: 'Goliath',    reg: -10, tempo: -6, dyn: +0.20, dens: -0.15 },
-  aasimar:    { label: 'Aasimar',    reg: +5,  rev: +0.20, tension: -0.10 },
+  human:      { label: 'Human',      cell: [2, 0, 1, 0, 2, 0, 1, 0] },
+  elf:        { label: 'Elf',        cell: [2, 0, 0, 1, 0, 1, 0, 0], reg: +7,  orn: +0.25, legato: 1.40, rev: +0.10 },
+  dwarf:      { label: 'Dwarf',      cell: [2, 0, 0, 2, 0, 0, 1, 0], reg: -12, orn: -0.10, dyn: +0.10, drone: true },
+  halfling:   { label: 'Halfling',   cell: [2, 0, 1, 1, 0, 1, 0, 1], reg: +5,  tempo: +10, legato: 0.65, leap: +0.10 },
+  gnome:      { label: 'Gnome',      cell: [2, 1, 0, 1, 1, 0, 1, 1], reg: +7,  tempo: +12, orn: +0.30, leap: +0.15, legato: 0.70 },
+  tiefling:   { label: 'Tiefling',   cell: [2, 0, 1, 0, 0, 1, 1, 0], tension: +0.25, orn: +0.15, reg: -3 },
+  dragonborn: { label: 'Dragonborn', cell: [2, 0, 0, 0, 0, 0, 1, 0], reg: -5,  tempo: -8, dyn: +0.15 },
+  halforc:    { label: 'Half-Orc',   cell: [2, 0, 0, 1, 2, 0, 0, 1], reg: -7,  tempo: +4, dyn: +0.15, orn: -0.15 },
+  halfelf:    { label: 'Half-Elf',   cell: [2, 0, 1, 0, 1, 1, 0, 0], reg: +3,  orn: +0.12, legato: 1.15 },
+  tabaxi:     { label: 'Tabaxi',     cell: [0, 1, 1, 0, 2, 0, 1, 1], tempo: +10, sync: +0.20, legato: 0.60, leap: +0.15 },
+  goliath:    { label: 'Goliath',    cell: [2, 0, 0, 0, 1, 0, 0, 0], reg: -10, tempo: -6, dyn: +0.20 },
+  aasimar:    { label: 'Aasimar',    cell: [2, 0, 0, 1, 0, 0, 1, 0], reg: +5,  rev: +0.20, tension: -0.10 },
 };
 
 /* Traits own how the melody behaves: loud or quiet, smooth or jagged, busy or
    sparse. Nothing here changes the instruments — that would fight the class. */
 const TRAITS = {
   brave:      { label: 'Brave',       dyn: +0.15, leap: +0.15, rise: +0.30 },
-  shy:        { label: 'Shy',         dyn: -0.25, leap: -0.15, dens: -0.15, reg: +5 },
+  shy:        { label: 'Shy',         dyn: -0.25, leap: -0.15, cellMod: -0.15, reg: +5 },
   rude:       { label: 'Rude',        dyn: +0.20, leap: +0.20, legato: 0.70, rough: 0.15 },
   kind:       { label: 'Kind',        dyn: -0.05, legato: 1.25, tension: -0.10 },
   cruel:      { label: 'Cruel',       tension: +0.30, leap: +0.10, legato: 0.75 },
-  calm:       { label: 'Calm',        tempo: -8, legato: 1.35, dens: -0.15, dyn: -0.10 },
-  restless:   { label: 'Restless',    tempo: +8, dens: +0.20, sync: +0.15 },
+  calm:       { label: 'Calm',        tempo: -8, legato: 1.35, cellMod: -0.15, dyn: -0.10 },
+  restless:   { label: 'Restless',    tempo: +8, cellMod: +0.20, sync: +0.15 },
   proud:      { label: 'Proud',       dyn: +0.12, reg: -2, cadence: +0.20 },
   humble:     { label: 'Humble',      dyn: -0.15, leap: -0.15, orn: -0.10 },
-  cunning:    { label: 'Cunning',     sync: +0.25, orn: +0.15, tension: +0.10, dens: -0.05 },
+  cunning:    { label: 'Cunning',     sync: +0.25, orn: +0.15, tension: +0.10, cellMod: -0.05 },
   honest:     { label: 'Honest',      sync: -0.15, orn: -0.15, cadence: +0.25 },
   greedy:     { label: 'Greedy',      tension: +0.15, orn: +0.20, sync: +0.10 },
   loyal:      { label: 'Loyal',       cadence: +0.25, tension: -0.10, legato: 1.15 },
   reckless:   { label: 'Reckless',    tempo: +10, sync: +0.25, leap: +0.20, cadence: -0.25 },
-  curious:    { label: 'Curious',     orn: +0.25, leap: +0.10, dens: +0.10 },
-  cheerful:   { label: 'Cheerful',    tempo: +6, dyn: +0.08, tension: -0.15, dens: +0.10 },
+  curious:    { label: 'Curious',     orn: +0.25, leap: +0.10, cellMod: +0.10 },
+  cheerful:   { label: 'Cheerful',    tempo: +6, dyn: +0.08, tension: -0.15, cellMod: +0.10 },
   gloomy:     { label: 'Gloomy',      tempo: -10, tension: +0.15, reg: -5, dyn: -0.10 },
-  stubborn:   { label: 'Stubborn',    sync: -0.20, orn: -0.20, dyn: +0.10, dens: -0.05 },
+  stubborn:   { label: 'Stubborn',    sync: -0.20, orn: -0.20, dyn: +0.10, cellMod: -0.05 },
   wise:       { label: 'Wise',        tempo: -6, legato: 1.30, orn: -0.05, rev: +0.10 },
   hotheaded:  { label: 'Hot-headed',  tempo: +12, dyn: +0.15, sync: +0.20, legato: 0.70 },
 };
@@ -117,7 +131,7 @@ const LOOKS = {
   elegant:    { label: 'Elegant',    orn: +0.20, legato: 1.25, dyn: -0.05 },
   filthy:     { label: 'Filthy',     rough: 0.35, rev: -0.10, tension: +0.10 },
   radiant:    { label: 'Radiant',    rev: +0.25, reg: +5, tension: -0.15 },
-  gaunt:      { label: 'Gaunt',      dyn: -0.12, rev: +0.10, tension: +0.10, dens: -0.10 },
+  gaunt:      { label: 'Gaunt',      dyn: -0.12, rev: +0.10, tension: +0.10, cellMod: -0.10 },
   burly:      { label: 'Burly',      reg: -9, dyn: +0.15, attack: 0.80 },
 };
 
@@ -128,22 +142,22 @@ function baseParams() {
     tempo: 92,
     reg: 0,          /* semitones away from the default register */
     dyn: 0.62,       /* how loud the lead plays */
-    dens: 0.58,      /* how many notes per bar */
-    leap: 0.30,      /* how far the melody jumps */
-    orn: 0.15,       /* grace notes and runs */
-    sync: 0.20,      /* off-beat placement */
+    cellMod: 0.00,   /* notes added to, or taken out of, the race's cell */
+    leap: 0.30,      /* how wide the motif's steps are stretched */
+    orn: 0.15,       /* grace notes on accents */
+    sync: 0.20,      /* preference for off-beats when filling the cell */
     tension: 0.15,   /* dissonance allowed in the harmony */
     cadence: 0.75,   /* how firmly phrases land on the tonic */
     legato: 1.00,    /* note length multiplier */
     attack: 1.00,    /* attack time multiplier */
     rough: 0.00,     /* detune / noise in the timbre */
     rev: 0.30,       /* reverb send */
-    rise: 0.00,      /* tilt of the melodic contour */
+    rise: 0.00,      /* how far later phrases lift the motif */
     drone: false,
   };
 }
 
-const ADDITIVE = ['tempo', 'reg', 'dyn', 'dens', 'leap', 'orn', 'sync',
+const ADDITIVE = ['tempo', 'reg', 'dyn', 'cellMod', 'leap', 'orn', 'sync',
                   'tension', 'cadence', 'rough', 'rev', 'rise'];
 const MULTIPLIED = ['legato', 'attack'];
 
@@ -182,15 +196,22 @@ function characterToParams(ch) {
   (ch.traits || []).slice(0, 5).forEach((t) => soft(TRAITS[t]));
   (ch.looks || []).slice(0, 5).forEach((t) => soft(LOOKS[t]));
 
-  /* Instruments are not blended — they are chosen. A second class brings in a
-     counter-melody voice, which is how a multiclass becomes audible. */
+  /* Motif and cell are not blended — they are chosen. Averaging two motifs
+     would give a third one belonging to nobody, which is precisely the mush we
+     are trying to avoid. */
+  p.motif = cls.motif;
+  p.cell = race.cell;
+
+  /* A second class brings its own motif in as a fork: a short deviation in a
+     second voice, so the multiclass is heard as "and also", not as a blur. */
   const second = ch.second ? CLASSES[ch.second] : null;
   p.lead = cls.lead;
   p.pad = cls.pad;
   p.perc = cls.perc || (second && second.perc) || null;
   p.counter = second && second.lead !== cls.lead ? second.lead : null;
+  p.branchMotif = second ? second.motif : null;
   if (second) {
-    /* half a step of the second class's character, so the mix leans primary */
+    /* a fraction of the second class's character, so the mix leans primary */
     p.tempo += (second.tempo || 0) * 0.4;
     p.tension += (second.tension || 0) * 0.4;
   }
@@ -205,7 +226,7 @@ function characterToParams(ch) {
   p.tempo = clamp(Math.round(p.tempo), 52, 168);
   p.reg = clamp(Math.round(p.reg), -24, 24);
   p.dyn = clamp(p.dyn, 0.22, 1.00);
-  p.dens = clamp(p.dens, 0.20, 0.95);
+  p.cellMod = clamp(p.cellMod, -0.60, 0.60);
   p.leap = clamp(p.leap, 0.05, 0.90);
   p.orn = clamp(p.orn, 0.00, 0.80);
   p.sync = clamp(p.sync, 0.00, 0.70);

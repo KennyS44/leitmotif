@@ -124,12 +124,21 @@ const VOICE_NAMES = {
   bell: 'bells', flute: 'flute',
 };
 
+/* The race's bar of rhythm, drawn: a filled circle is an accent, a hollow one
+   an ordinary note. Everything in the theme lands on these. */
+function rhythmGlyphs(p) {
+  return window.Music.buildCell(p)
+    .map((v) => (v === 2 ? '●' : (v === 1 ? '○' : '·')))
+    .join('');
+}
+
 function why(p) {
   const bits = [
     `<b>${VOICE_NAMES[p.lead] || p.lead}</b> over ${VOICE_NAMES[p.pad] || p.pad}`,
-    p.counter ? `with <b>${VOICE_NAMES[p.counter]}</b> answering` : null,
+    p.counter ? `with <b>${VOICE_NAMES[p.counter]}</b> forking off` : null,
     `<b>${p.modeName}</b> mode`,
     `<b>${p.tempo}</b> bpm`,
+    `beat <b class="beat">${rhythmGlyphs(p)}</b>`,
     p.drone ? 'an open drone beneath' : null,
     p.rough > 0.25 ? 'a rough edge on the tone' : null,
     p.tension > 0.45 ? 'unresolved harmony' : null,

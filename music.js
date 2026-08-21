@@ -3,12 +3,22 @@
 /* The generic half: a small composer and a small synthesiser.
  *
  * Neither knows anything about D&D. They are handed the parameter block that
- * mapping.js produced and they play it. The split matters: it means the sound
- * can be improved without touching the character logic, and the character
- * logic can be re-tuned without breaking the sound.
+ * mapping.js produced and they play it.
  *
- * composeScore() returns plain data — a list of notes with times. Nothing is
- * audible about it, which is exactly why it can be tested.
+ * The composer is built on two things the first version did not have, and
+ * whose absence is exactly what made it sound like scattered notes:
+ *
+ *   a MOTIF — a fixed handful of intervals that is stated, repeated and varied
+ *   instead of re-invented every bar. Music becomes recognisable through
+ *   repetition; a random walk, however well-tuned its statistics, cannot be
+ *   remembered because there is nothing in it that ever comes back.
+ *
+ *   a CELL — one bar of rhythm that everything else locks onto. The melody,
+ *   the bass and the drums all take their onsets from the same grid, so they
+ *   sound like one band rather than three processes running side by side.
+ *
+ * On top of those sits a FORM: four phrases arranged A A' B A'', so forty
+ * seconds has a shape instead of just a length.
  */
 
 /* Deterministic pseudo-random. Seeded from the character, so the same sheet
@@ -28,157 +38,97 @@ const PHRASES = 4;
 const BARS_PER_PHRASE = 4;
 const SLOTS = 8;                    /* eighth notes in a 4/4 bar */
 
-/* Chord movements, written as scale degrees. The firmer the character's
-   cadence, the more likely we pick one that returns home. */
-const PROGRESSIONS = [
-  { degrees: [0, 3, 4, 0], home: 1.0 },
-  { degrees: [0, 5, 3, 4], home: 0.6 },
-  { degrees: [0, 4, 5, 0], home: 0.9 },
-  { degrees: [0, 6, 3, 4], home: 0.4 },
-  { degrees: [0, 2, 5, 4], home: 0.3 },
+/* A A' B A''. The B phrase lifts the same motif to a different step of the
+   scale — contrast without introducing a stranger. */
+const FORM = [
+  { roles: ['state', 'vary', 'state', 'close'], lift: 0, chords: 'home' },
+  { roles: ['state', 'vary', 'turn',  'close'], lift: 0, chords: 'home' },
+  { roles: ['turn',  'vary', 'turn',  'close'], lift: 3, chords: 'away' },
+  { roles: ['state', 'vary', 'state', 'close'], lift: 0, chords: 'home' },
 ];
 
+/* Two progressions only, and the home one repeats in three phrases out of
+   four. Harmony that keeps coming back is what lets the ear hear a return. */
+const HOME_CHORDS = [
+  { degrees: [0, 3, 4, 0], settled: 1.0 },
+  { degrees: [0, 5, 3, 4], settled: 0.5 },
+  { degrees: [0, 4, 5, 0], settled: 0.8 },
+];
+const AWAY_CHORDS = [5, 3, 1, 4];
+
 function scalePitch(p, degree) {
-  /* degree may run past the end of the mode — wrap and add octaves */
   const n = p.mode.length;
   const oct = Math.floor(degree / n);
   const idx = ((degree % n) + n) % n;
   return p.mode[idx] + oct * 12;
 }
 
-function composeScore(p) {
-  const rand = rng(p.seed);
-  const beat = 60 / p.tempo;
-  const barDur = beat * 4;
-  const slotDur = barDur / SLOTS;
-  const bars = PHRASES * BARS_PER_PHRASE;
+/* ---------------------------------------------------------------- rhythm */
 
-  const bassRoot = p.root;
-  const padRoot = p.root + 12;
-  const leadCentre = p.root + 24 + p.reg;
+/* The race brings a bar of rhythm: 2 = accent, 1 = note, 0 = rest. Traits are
+   allowed to thin it or fill it in, but never to replace it — the pulse has to
+   survive so that the character still walks the way its race walks. */
+function buildCell(p) {
+  const cell = (p.cell || [2, 0, 1, 0, 2, 0, 1, 0]).slice();
+  const rand = rng(p.seed ^ 0x9e3779b9);
 
-  const tracks = {
-    lead: [], counter: [], pad: [], bass: [], perc: [],
-  };
-
-  /* --- harmony ------------------------------------------------------- */
-  const chords = [];
-  for (let ph = 0; ph < PHRASES; ph += 1) {
-    const pool = PROGRESSIONS.filter((pr) => pr.home >= p.cadence - 0.45);
-    const pick = (pool.length ? pool : PROGRESSIONS)[Math.floor(rand() * (pool.length || PROGRESSIONS.length))];
-    pick.degrees.forEach((d, i) => {
-      /* the last bar of the last phrase always comes home */
-      const last = ph === PHRASES - 1 && i === BARS_PER_PHRASE - 1;
-      chords.push(last ? 0 : d);
-    });
+  let budget = Math.round(p.cellMod * 8);
+  /* thinning takes the weakest notes first, filling adds off-beats: a calm
+     character breathes, a restless one fidgets, and both keep the accents */
+  while (budget < 0) {
+    const weak = [];
+    cell.forEach((v, i) => { if (v === 1) weak.push(i); });
+    if (!weak.length) break;
+    cell[weak[Math.floor(rand() * weak.length)]] = 0;
+    budget += 1;
   }
-
-  for (let bar = 0; bar < bars; bar += 1) {
-    const t = bar * barDur;
-    const deg = chords[bar];
-    const tones = [0, 2, 4].map((s) => scalePitch(p, deg + s));
-    if (p.tension > 0.40) tones.push(scalePitch(p, deg + 6));       /* seventh */
-    if (p.tension > 0.65) tones.push(scalePitch(p, deg + 1) + 12);  /* a rub on top */
-
-    tones.forEach((semi) => {
-      tracks.pad.push({ t, midi: padRoot + semi, dur: barDur * 0.98, vel: 0.30 + p.dyn * 0.12 });
-    });
-
-    if (p.drone) {
-      /* dwarves and their fifths: a bar-long open drone under everything */
-      if (bar % BARS_PER_PHRASE === 0) {
-        const len = barDur * BARS_PER_PHRASE * 0.99;
-        tracks.bass.push({ t, midi: bassRoot, dur: len, vel: 0.40 });
-        tracks.bass.push({ t, midi: bassRoot + 7, dur: len, vel: 0.30 });
-      }
-    }
-    tracks.bass.push({ t, midi: bassRoot + tones[0] % 12, dur: beat * 1.6, vel: 0.46 + p.dyn * 0.12 });
-    if (p.dens > 0.5) {
-      tracks.bass.push({ t: t + beat * 2, midi: bassRoot + (tones[0] % 12) + 7,
-                         dur: beat * 1.2, vel: 0.34 + p.dyn * 0.10 });
-    }
-
-    /* --- melody ------------------------------------------------------ */
-    const phrasePos = bar % BARS_PER_PHRASE;
-    const closing = phrasePos === BARS_PER_PHRASE - 1;
-    let degree = bar === 0 ? 0 : null;
-
-    for (let s = 0; s < SLOTS; s += 1) {
-      const onBeat = s % 2 === 0;
-      /* syncopation makes off-beats as likely as beats, and thins the downbeat */
-      let chance = p.dens * (onBeat ? 1.0 - p.sync * 0.45 : p.sync * 1.5);
-      if (s === 0) chance = Math.max(chance, 0.55);
-      if (closing && s > 4) chance *= 0.5 + p.cadence * 0.3;
-      if (rand() > chance) continue;
-
-      if (degree === null) degree = pickNext(p, rand, lastDegree(tracks.lead, p, leadCentre), deg);
-      else degree = pickNext(p, rand, degree, deg);
-
-      /* land the phrase on a chord tone, the more so the more lawful */
-      if (closing && s >= 6 && rand() < p.cadence) degree = nearestChordTone(p, degree, deg);
-
-      const long = rand() < 0.3 ? 2 : 1;
-      const dur = slotDur * long * p.legato;
-      const midi = leadCentre + scalePitch(p, degree);
-      const vel = p.dyn * (onBeat ? 1.0 : 0.82) * (0.88 + rand() * 0.24);
-      tracks.lead.push({ t: t + s * slotDur, midi, dur, vel });
-
-      /* an ornament is a flick a step above, just before the note */
-      if (rand() < p.orn && s > 0) {
-        tracks.lead.push({
-          t: t + s * slotDur - slotDur * 0.28,
-          midi: leadCentre + scalePitch(p, degree + 1),
-          dur: slotDur * 0.24, vel: vel * 0.65,
-        });
-      }
-      s += long - 1;
-    }
-
-    /* --- counter-melody: only when a second class brought a voice ----- */
-    if (p.counter) {
-      for (let s = 1; s < SLOTS; s += 2) {
-        if (rand() > p.dens * 0.45) continue;
-        const d = Math.floor(rand() * 3) * 2;   /* chord tones only */
-        tracks.counter.push({
-          t: t + s * slotDur,
-          midi: leadCentre - 12 + scalePitch(p, deg + d),
-          dur: slotDur * 1.4 * p.legato,
-          vel: p.dyn * 0.55,
-        });
-      }
-    }
-
-    /* --- percussion --------------------------------------------------- */
-    addPerc(tracks.perc, p, t, beat, rand);
+  while (budget > 0) {
+    const holes = [];
+    cell.forEach((v, i) => { if (v === 0) holes.push(i); });
+    if (!holes.length) break;
+    /* prefer off-beats, which is what makes added notes feel like syncopation
+       rather than just more of the same */
+    const off = holes.filter((i) => i % 2 === 1);
+    const pool = off.length && rand() < 0.5 + p.sync ? off : holes;
+    cell[pool[Math.floor(rand() * pool.length)]] = 1;
+    budget -= 1;
   }
-
-  const duration = bars * barDur + 2.4;
-  return { duration, barDur, tracks };
+  if (!cell.some((v) => v === 2)) cell[0] = 2;
+  return cell;
 }
 
-function lastDegree(lead, p, centre) {
-  if (!lead.length) return 0;
-  const last = lead[lead.length - 1].midi - centre;
-  /* nearest degree to whatever we ended on */
-  let best = 0; let bestD = 99;
-  for (let d = -7; d <= 14; d += 1) {
-    const diff = Math.abs(scalePitch(p, d) - last);
-    if (diff < bestD) { bestD = diff; best = d; }
-  }
-  return best;
-}
+const onsetsOf = (cell) => cell.map((v, i) => (v ? i : -1)).filter((i) => i >= 0);
 
-function pickNext(p, rand, from, chordDeg) {
-  const leap = rand() < p.leap;
-  const size = leap ? 2 + Math.floor(rand() * 4) : 1 + (rand() < 0.35 ? 1 : 0);
-  /* `rise` tilts the coin: brave characters climb, gloomy ones sink */
-  const up = rand() < 0.5 + p.rise * 0.5;
-  let next = from + (up ? size : -size);
-  if (next > 12) next -= 7;
-  if (next < -5) next += 7;
-  /* a leap that lands nowhere sounds wrong, so leaps aim at the chord */
-  if (leap && rand() < 0.6) next = nearestChordTone(p, next, chordDeg);
-  return next;
+/* ----------------------------------------------------------------- motif */
+
+/* Each role is a different thing to do with the same handful of intervals.
+   Nothing here invents new material; that is the point.
+ *
+ * Deliberately free of randomness. The same role always produces the same
+ * result, so that the fourth phrase can be literally the first one again —
+ * a return the ear can actually catch. */
+function shapeMotif(motif, role) {
+  const m = motif.slice();
+  switch (role) {
+    case 'state':
+      return m;
+    case 'vary': {
+      /* the tail moves, the head stays — the ear hears "the same, but".
+         It moves against the motif's own direction, so a rising theme is
+         answered downwards and a sinking one is answered upwards. */
+      const dir = m[m.length - 1] >= m[0] ? -1 : 1;
+      m[m.length - 1] += dir;
+      return m;
+    }
+    case 'turn':
+      /* rotate and lift: recognisably the motif, told from another angle */
+      return m.slice(1).concat(m.slice(0, 1)).map((d) => d + 2);
+    case 'close':
+      /* shorten and come home */
+      return m.slice(0, Math.max(2, m.length - 1)).concat([0]);
+    default:
+      return m;
+  }
 }
 
 function nearestChordTone(p, degree, chordDeg) {
@@ -194,38 +144,169 @@ function nearestChordTone(p, degree, chordDeg) {
   return best;
 }
 
-function addPerc(out, p, t, beat, rand) {
+/* ---------------------------------------------------------------- score */
+
+const ROLE_SALT = { state: 0x1f2e3d, vary: 0x4c5b6a, turn: 0x778899, close: 0xaabbcc };
+
+function composeScore(p) {
+  const beat = 60 / p.tempo;
+  const barDur = beat * 4;
+  const slotDur = barDur / SLOTS;
+
+  const cell = buildCell(p);
+  const onsets = onsetsOf(cell);
+  const motif = (p.motif && p.motif.length ? p.motif : [0, 2, 4, 2]).slice();
+  const branch = p.branchMotif || null;
+  const spread = 0.70 + p.leap;      /* traits widen or narrow the same shape */
+
+  const bassRoot = p.root;
+  const padRoot = p.root + 12;
+  const leadCentre = p.root + 24 + p.reg;
+
+  const tracks = { lead: [], counter: [], pad: [], bass: [], perc: [] };
+
+  /* the progression that best matches how settled this character is */
+  const homePick = HOME_CHORDS.slice().sort(
+    (a, b) => Math.abs(a.settled - p.cadence) - Math.abs(b.settled - p.cadence))[0];
+
+  for (let ph = 0; ph < PHRASES; ph += 1) {
+    const form = FORM[ph];
+    const chords = form.chords === 'home' ? homePick.degrees : AWAY_CHORDS;
+    /* only the contrast phrase moves; the A phrases all sit at the same height
+       so that the last one is heard as a return and not as a third idea */
+    const lift = form.lift ? form.lift + Math.round(p.rise * 3) : 0;
+
+    for (let b = 0; b < BARS_PER_PHRASE; b += 1) {
+      const bar = ph * BARS_PER_PHRASE + b;
+      const t = bar * barDur;
+      const role = form.roles[b];
+      const chordDeg = chords[b];
+      const lastBar = ph === PHRASES - 1 && b === BARS_PER_PHRASE - 1;
+
+      /* --- harmony: one chord per bar, held ------------------------- */
+      const tones = [0, 2, 4].map((s) => scalePitch(p, (lastBar ? 0 : chordDeg) + s));
+      if (p.tension > 0.40) tones.push(scalePitch(p, chordDeg + 6));
+      if (p.tension > 0.65) tones.push(scalePitch(p, chordDeg + 1) + 12);
+      tones.forEach((semi) => {
+        tracks.pad.push({ t, midi: padRoot + semi, dur: barDur * 0.98, vel: 0.30 + p.dyn * 0.12 });
+      });
+
+      /* --- bass: the accents of the cell, nothing else --------------- */
+      if (p.drone && b === 0) {
+        const len = barDur * BARS_PER_PHRASE * 0.99;
+        tracks.bass.push({ t, midi: bassRoot, dur: len, vel: 0.38 });
+        tracks.bass.push({ t, midi: bassRoot + 7, dur: len, vel: 0.28 });
+      }
+      const root = bassRoot + (scalePitch(p, lastBar ? 0 : chordDeg) % 12);
+      cell.forEach((v, s) => {
+        if (v !== 2) return;
+        tracks.bass.push({
+          t: t + s * slotDur, midi: s === 0 ? root : root + 7,
+          dur: slotDur * 2.4, vel: 0.42 + p.dyn * 0.14,
+        });
+      });
+
+      /* --- melody: the motif, laid on the cell ----------------------
+         Decisions inside a bar depend on the bar's role and position, never on
+         how many bars came before it. That is what lets the fourth phrase come
+         back as the first one rather than as something merely similar. */
+      const barRand = rng((p.seed ^ ROLE_SALT[role] ^ (b * 2654435761)) >>> 0);
+      const seq = shapeMotif(motif, role);
+      /* the second class takes over the answering bar once, in the second
+         phrase only — leaving the first and last phrases identical, so the
+         return still lands */
+      const useBranch = branch && role === 'vary' && ph === 1;
+      const line = useBranch ? shapeMotif(branch, 'vary') : seq;
+
+      onsets.forEach((slot, i) => {
+        let degree = lift + Math.round(line[i % line.length] * spread);
+        const first = i === 0;
+        const last = i === onsets.length - 1;
+        /* anchor only the ends of the bar to the harmony: enough to keep the
+           chord honest, not enough to erase the shape of the motif */
+        if (first || (last && role === 'close')) degree = nearestChordTone(p, degree, chordDeg);
+        if (lastBar && last) degree = 0;
+
+        const next = i + 1 < onsets.length ? onsets[i + 1] : SLOTS;
+        const dur = Math.max(slotDur * 0.6, (next - slot) * slotDur * p.legato);
+        const accent = cell[slot] === 2;
+        tracks.lead.push({
+          t: t + slot * slotDur,
+          midi: leadCentre + scalePitch(p, degree),
+          dur,
+          vel: p.dyn * (accent ? 1.0 : 0.78),
+        });
+
+        /* ornaments only decorate accents, and only sometimes — scattered
+           grace notes were half of why the first version sounded loose */
+        if (accent && barRand() < p.orn * 0.5 && slot > 0) {
+          tracks.lead.push({
+            t: t + slot * slotDur - slotDur * 0.26,
+            midi: leadCentre + scalePitch(p, degree + 1),
+            dur: slotDur * 0.22,
+            vel: p.dyn * 0.55,
+          });
+        }
+      });
+
+      /* --- the second class: a short fork under the melody ---------- */
+      if (branch && (role === 'turn' || (role === 'vary' && !useBranch))) {
+        const fork = shapeMotif(branch, 'turn');
+        onsets.filter((s) => cell[s] === 1).slice(0, fork.length).forEach((slot, i) => {
+          tracks.counter.push({
+            t: t + slot * slotDur,
+            midi: leadCentre - 12 + scalePitch(p, lift + fork[i]),
+            dur: slotDur * 1.6 * p.legato,
+            vel: p.dyn * 0.5,
+          });
+        });
+      }
+
+      /* --- percussion: the same cell, played by the kit ------------- */
+      addPerc(tracks.perc, p, t, slotDur, cell, bar);
+    }
+  }
+
+  const duration = PHRASES * BARS_PER_PHRASE * barDur + 2.4;
+  return { duration, barDur, cell, motif, tracks };
+}
+
+/* The kit reads the cell rather than a pattern of its own, which is what makes
+   the drums sound like they are playing with the tune and not next to it. */
+function addPerc(out, p, t, slotDur, cell, bar) {
+  if (!p.perc) return;
   const v = 0.42 + p.dyn * 0.25;
-  const push = (off, kind, vel) => out.push({ t: t + off, kind, vel });
-  switch (p.perc) {
-    case 'martial':
-      push(0, 'kick', v); push(beat, 'snare', v * 0.8);
-      push(beat * 2, 'kick', v * 0.9); push(beat * 3, 'snare', v * 0.85);
-      if (rand() < p.sync) push(beat * 3.5, 'snare', v * 0.5);
-      break;
-    case 'heavy':
-      push(0, 'kick', v * 1.15); push(beat * 1.5, 'kick', v * 0.7);
-      push(beat * 2, 'tom', v); push(beat * 3, 'kick', v * 0.9);
-      if (rand() < 0.5) push(beat * 3.5, 'tom', v * 0.6);
-      break;
-    case 'light':
-      for (let i = 0; i < 8; i += 1) {
-        if (rand() < 0.55 + p.dens * 0.3) push(beat * 0.5 * i, 'shaker', v * 0.35);
-      }
-      push(0, 'kick', v * 0.6);
-      break;
-    case 'frame':
-      push(0, 'frame', v); push(beat * 1.5, 'frame', v * 0.6);
-      push(beat * 2.5, 'frame', v * 0.75);
-      if (rand() < p.sync) push(beat * 3.5, 'frame', v * 0.45);
-      break;
-    case 'wood':
-      for (let i = 0; i < 8; i += 1) {
-        if (i % 2 === 1 ? rand() < 0.7 : rand() < 0.3) push(beat * 0.5 * i, 'wood', v * 0.45);
-      }
-      break;
-    default:
-      break;
+  const push = (slot, kind, vel) => out.push({ t: t + slot * slotDur, kind, vel });
+
+  cell.forEach((val, s) => {
+    if (!val) return;
+    const accent = val === 2;
+    switch (p.perc) {
+      case 'martial':
+        push(s, accent ? 'kick' : 'snare', v * (accent ? 1.0 : 0.6));
+        break;
+      case 'heavy':
+        push(s, accent ? 'kick' : 'tom', v * (accent ? 1.15 : 0.6));
+        break;
+      case 'light':
+        push(s, accent ? 'kick' : 'shaker', v * (accent ? 0.7 : 0.35));
+        break;
+      case 'frame':
+        push(s, 'frame', v * (accent ? 1.0 : 0.55));
+        break;
+      case 'wood':
+        push(s, 'wood', v * (accent ? 0.6 : 0.35));
+        break;
+      default:
+        break;
+    }
+  });
+
+  /* an extra stroke on the last onset of every second bar, so the four-bar
+     phrase has a seam you can hear — still on the grid, like everything else */
+  if (bar % 2 === 1 && (p.perc === 'martial' || p.perc === 'heavy')) {
+    const onsets = cell.map((v2, i) => (v2 ? i : -1)).filter((i) => i >= 0);
+    push(onsets[onsets.length - 1], p.perc === 'heavy' ? 'tom' : 'snare', v * 0.5);
   }
 }
 
@@ -293,19 +374,18 @@ function playNote(ctx, dest, voice, note, p) {
   const out = ctx.createGain();
   out.connect(dest);
 
-  const simple = (types, cents, cutoff, attack, release, wave) => {
+  const simple = (cents, cutoff, attack, release, wave) => {
     const stop = t + note.dur + release + 0.1;
     const filt = ctx.createBiquadFilter();
     filt.type = 'lowpass';
     filt.frequency.setValueAtTime(cutoff * (0.6 + vel * 0.8), t);
     filt.Q.value = 0.7;
     filt.connect(out);
-    types.forEach((c) => {
+    cents.forEach((c) => {
       const o = detuneOsc(ctx, wave, f, c + (Math.random() - 0.5) * rough * 30, t, stop);
       o.connect(filt);
     });
     env(ctx, out, t, note.dur, vel * 0.30, attack * atk, release);
-    void cents;
   };
 
   switch (voice) {
@@ -334,7 +414,7 @@ function playNote(ctx, dest, voice, note, p) {
       break;
     }
     case 'strings':
-      simple([-9, 0, 8], 0, 2300, 0.20, 0.30, 'sawtooth');
+      simple([-9, 0, 8], 2300, 0.20, 0.30, 'sawtooth');
       break;
     case 'choir': {
       const stop = t + note.dur + 0.7;
@@ -368,7 +448,7 @@ function playNote(ctx, dest, voice, note, p) {
       break;
     }
     case 'dark':
-      simple([-14, 0, 13], 0, 640, 0.35, 0.6, 'sawtooth');
+      simple([-14, 0, 13], 640, 0.35, 0.6, 'sawtooth');
       break;
     case 'lute': {
       const stop = t + note.dur + 1.0;
@@ -433,7 +513,7 @@ function playNote(ctx, dest, voice, note, p) {
       break;
     }
     default:
-      simple([0], 0, 2000, 0.05, 0.2, 'triangle');
+      simple([0], 2000, 0.05, 0.2, 'triangle');
   }
 }
 
@@ -483,7 +563,11 @@ function renderScore(ctx, score, p, startAt) {
   const t0 = startAt === undefined ? ctx.currentTime + 0.08 : startAt;
 
   const master = ctx.createGain();
-  master.gain.value = 0.9;
+  /* A shy wizard should sound softer than a raging barbarian, but not four
+     times softer — at that distance the quiet one reads as broken rather than
+     as quiet. Half of the difference is compensated back here, which keeps the
+     direction of the character and drops the range to something listenable. */
+  master.gain.value = 0.9 * Math.pow(0.62 / p.dyn, 0.7);
   const limiter = ctx.createDynamicsCompressor();
   limiter.threshold.value = -8;
   limiter.knee.value = 6;
@@ -529,4 +613,4 @@ function renderScore(ctx, score, p, startAt) {
   return t0 + score.duration;
 }
 
-window.Music = { composeScore, renderScore, rng, freqOf };
+window.Music = { composeScore, renderScore, rng, freqOf, buildCell };
