@@ -132,12 +132,17 @@ function rhythmGlyphs(p) {
     .join('');
 }
 
+const COLOUR_NAMES = ['', 'flat second', 'flat third', 'sharp fourth',
+                      'flat fifth', 'natural sixth', 'flat seventh'];
+
 function why(p) {
   const bits = [
     `<b>${VOICE_NAMES[p.lead] || p.lead}</b> over ${VOICE_NAMES[p.pad] || p.pad}`,
     p.counter ? `with <b>${VOICE_NAMES[p.counter]}</b> forking off` : null,
-    `<b>${p.modeName}</b> mode`,
-    `<b>${p.tempo}</b> bpm`,
+    p.colour === null
+      ? `<b>${p.modeName}</b> mode on a pedal`
+      : `<b>${p.modeName}</b> mode, leaning on its <b>${COLOUR_NAMES[p.colour]}</b>`,
+    `<b>${p.beats}</b> beats at <b>${p.tempo}</b> bpm${p.swing ? ', swung' : ''}`,
     `beat <b class="beat">${rhythmGlyphs(p)}</b>`,
     p.drone ? 'an open drone beneath' : null,
     p.rough > 0.25 ? 'a rough edge on the tone' : null,

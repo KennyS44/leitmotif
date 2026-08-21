@@ -64,9 +64,20 @@ function check(name, cond, detail) {
   const structure = await page.evaluate(() => window.PRESETS.map((ch) => {
     const p = window.Leitmotif.characterToParams(ch);
     const s = window.Leitmotif.composeScore(p);
-    const beat = 60 / p.tempo;
-    const barDur = beat * 4;
-    const slot = barDur / 8;
+    const barDur = s.barDur;
+    const slots = s.cell.length;
+    const slot = barDur / slots;
+    /* the grid a part is allowed to land on, swing included */
+    const allowed = s.cell
+      .map((v, i) => (v ? i * slot + (i % 2 ? s.swing * slot * 0.5 : 0) : -1))
+      .filter((x) => x >= 0);
+    /* a hit landing exactly on a bar line can come back from the modulo as
+       "barDur minus a rounding error", so the wrap is compared too */
+    const onGridAt = (time) => {
+      const rem = time % barDur;
+      return allowed.some((a) => Math.abs(rem - a) < 0.003
+        || Math.abs(rem - barDur - a) < 0.003);
+    };
 
     /* signature of a bar = its melodic shape, independent of where it sits */
     const bars = {};
@@ -83,19 +94,14 @@ function check(name, cond, detail) {
     const topRepeat = Math.max(...Object.values(counts));
 
     /* everything should sit on the race's grid */
-    const onGrid = s.tracks.lead.filter((n) => {
-      const pos = Math.round((n.t % barDur) / slot);
-      return Math.abs(n.t % barDur - pos * slot) < 0.002 && s.cell[pos % 8] > 0;
-    }).length;
-    const percOnGrid = s.tracks.perc.filter((h) => {
-      const pos = Math.round((h.t % barDur) / slot);
-      return Math.abs(h.t % barDur - pos * slot) < 0.002 && s.cell[pos % 8] > 0;
-    }).length;
+    const onGrid = s.tracks.lead.filter((n) => onGridAt(n.t)).length;
+    const percOnGrid = s.tracks.perc.filter((h) => onGridAt(h.t)).length;
 
     /* The opening phrase should return at the end: A A' B A''. The very last
        bar is excluded — it carries the final cadence and is meant to differ. */
-    const first = sigs.slice(0, 3).join('|');
-    const last = sigs.slice(12, 15).join('|');
+    const per = s.barsPerPhrase;
+    const first = sigs.slice(0, per - 1).join('|');
+    const last = sigs.slice(3 * per, 4 * per - 1).join('|');
 
     /* how much of the theme is built from material that occurs more than once */
     const recurring = sigs.filter((s) => counts[s] > 1).length / sigs.length;
@@ -109,7 +115,23 @@ function check(name, cond, detail) {
         ? Math.round(100 * percOnGrid / s.tracks.perc.length) : 100,
       returns: first === last,
       cell: s.cell.join(''),
+      metre: `${s.beats}/${s.cell.length}${s.swing ? ` sw${s.swing}` : ''}`,
       motif: s.motif.join(','),
+      /* the layers must stay stacked: bass under pad under counter under lead */
+      layers: (() => {
+        const top = (arr) => (arr.length ? Math.max(...arr.map((n) => n.midi)) : -Infinity);
+        const bot = (arr) => (arr.length ? Math.min(...arr.map((n) => n.midi)) : Infinity);
+        return {
+          padOverLead: top(s.tracks.pad) > bot(s.tracks.lead),
+          bassOverPad: top(s.tracks.bass) > bot(s.tracks.pad),
+        };
+      })(),
+      /* does the mode's colour note actually sound? compared as a pitch class,
+         because the whole stack is transposed by the character's register */
+      colourHeard: p.colour === null ? null : s.tracks.lead.some((n) => n.colour),
+      barsPerPhrase: s.barsPerPhrase,
+      shortest: +Math.min(...s.tracks.lead
+        .filter((n) => !n.grace).map((n) => n.dur)).toFixed(3),
     };
   }));
 
@@ -123,10 +145,19 @@ function check(name, cond, detail) {
     check(`${s.name}: melody sits on the race's grid`, s.onGrid >= 85, `${s.onGrid}%`);
     check(`${s.name}: percussion sits on the same grid`, s.percOnGrid >= 95, `${s.percOnGrid}%`);
     check(`${s.name}: the opening phrase returns at the end`, s.returns);
+    check(`${s.name}: the pad stays below the melody`, !s.layers.padOverLead);
+    check(`${s.name}: the bass stays below the pad`, !s.layers.bassOverPad);
+    check(`${s.name}: no note is a stab`, s.shortest >= 0.16, `shortest ${s.shortest}s`);
+    if (s.colourHeard !== null) {
+      check(`${s.name}: the mode's colour note is actually sounded`, s.colourHeard);
+    }
   });
 
   const cells = new Set(structure.map((s) => s.cell));
   check('races bring different rhythms', cells.size >= 5, `${cells.size} distinct cells`);
+  const metres = new Set(structure.map((s) => s.metre));
+  check('races bring different metres', metres.size >= 4,
+    `${metres.size} distinct: ${[...metres].join(', ')}`);
   const motifs = new Set(structure.map((s) => s.motif));
   check('classes bring different motifs', motifs.size === 6, `${motifs.size} distinct motifs`);
 

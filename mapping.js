@@ -22,15 +22,23 @@
  * different one, and nothing is allowed to fight the pulse the race set.
  */
 
-/* Modes, ordered bright to dark. Alignment picks one of them. */
+/* Each mode has one note that carries its identity — its "colour note", the
+   degree that is bent away from the plain major scale. Sounding that one degree
+   is what makes the mode audible; a melody that never touches it is in the mode
+   on paper only. So every alignment names the scale degree the theme must hit.
+ *
+ * Ionian is the exception: it bends nothing, which is why plain major is the
+ * mode that most easily sounds like every other plain major. It gets a
+ * suspended fourth in the harmony and a pedal bass instead, so that "lawful
+ * good" has a colour of its own rather than being the absence of one. */
 const MODES = {
-  lydian:     [0, 2, 4, 6, 7, 9, 11],
-  ionian:     [0, 2, 4, 5, 7, 9, 11],
-  mixolydian: [0, 2, 4, 5, 7, 9, 10],
-  dorian:     [0, 2, 3, 5, 7, 9, 10],
-  aeolian:    [0, 2, 3, 5, 7, 8, 10],
-  phrygian:   [0, 1, 3, 5, 7, 8, 10],
-  locrian:    [0, 1, 3, 5, 6, 8, 10],
+  lydian:     { steps: [0, 2, 4, 6, 7, 9, 11], colour: 3 },    /* sharp fourth */
+  ionian:     { steps: [0, 2, 4, 5, 7, 9, 11], colour: null }, /* bends nothing */
+  mixolydian: { steps: [0, 2, 4, 5, 7, 9, 10], colour: 6 },    /* flat seventh */
+  dorian:     { steps: [0, 2, 3, 5, 7, 9, 10], colour: 5 },    /* natural sixth */
+  aeolian:    { steps: [0, 2, 3, 5, 7, 8, 10], colour: 2 },    /* flat third */
+  phrygian:   { steps: [0, 1, 3, 5, 7, 8, 10], colour: 1 },    /* flat second */
+  locrian:    { steps: [0, 1, 3, 5, 6, 8, 10], colour: 4 },    /* flat fifth */
 };
 
 /* The nine alignments. The good/evil axis picks brightness, the law/chaos axis
@@ -72,23 +80,45 @@ const CLASSES = {
   artificer:  { label: 'Artificer',  motif: [0, 1, 2, 0],     lead: 'lute',   pad: 'air',     perc: 'wood',    tempo:  +4, sync: +0.20 },
 };
 
-/* Race owns the rhythmic cell: one bar, eight slots, 2 = accent, 1 = note,
-   0 = rest. The melody takes its onsets from it, the bass plays its accents and
-   the kit plays all of it — which is what makes the parts sound like one band.
-   Register and articulation come along for the ride. */
+/* Race owns the rhythm — and not only which slots are struck, but the shape of
+   the bar itself: how many beats it has, how those beats are subdivided, and
+   whether the off-beats are pushed late.
+ *
+ * That last part is what was missing. Twelve races all walking in four-four
+ * differ only in their footfalls; a race in three, a race in five and a race in
+ * triplets differ in how they *move*. Metre is the coarsest rhythmic difference
+ * there is, so it is the one the ear catches first.
+ *
+ *   beats — beats in a bar (4 = common time, 3 = a broad three, 5 = odd)
+ *   cell  — one slot per subdivision: 2 = accent, 1 = note, 0 = rest
+ *   swing — how far the off-beats are pushed late, 0 to about 0.4
+ *
+ * The melody takes its onsets from the cell, the bass plays its accents and the
+ * kit plays all of it — one grid, so the parts sound like one band. */
 const RACES = {
-  human:      { label: 'Human',      cell: [2, 0, 1, 0, 2, 0, 1, 0] },
-  elf:        { label: 'Elf',        cell: [2, 0, 0, 1, 0, 1, 0, 0], reg: +7,  orn: +0.25, legato: 1.40, rev: +0.10 },
-  dwarf:      { label: 'Dwarf',      cell: [2, 0, 0, 2, 0, 0, 1, 0], reg: -12, orn: -0.10, dyn: +0.10, drone: true },
-  halfling:   { label: 'Halfling',   cell: [2, 0, 1, 1, 0, 1, 0, 1], reg: +5,  tempo: +10, legato: 0.65, leap: +0.10 },
-  gnome:      { label: 'Gnome',      cell: [2, 1, 0, 1, 1, 0, 1, 1], reg: +7,  tempo: +12, orn: +0.30, leap: +0.15, legato: 0.70 },
-  tiefling:   { label: 'Tiefling',   cell: [2, 0, 1, 0, 0, 1, 1, 0], tension: +0.25, orn: +0.15, reg: -3 },
-  dragonborn: { label: 'Dragonborn', cell: [2, 0, 0, 0, 0, 0, 1, 0], reg: -5,  tempo: -8, dyn: +0.15 },
-  halforc:    { label: 'Half-Orc',   cell: [2, 0, 0, 1, 2, 0, 0, 1], reg: -7,  tempo: +4, dyn: +0.15, orn: -0.15 },
-  halfelf:    { label: 'Half-Elf',   cell: [2, 0, 1, 0, 1, 1, 0, 0], reg: +3,  orn: +0.12, legato: 1.15 },
-  tabaxi:     { label: 'Tabaxi',     cell: [0, 1, 1, 0, 2, 0, 1, 1], tempo: +10, sync: +0.20, legato: 0.60, leap: +0.15 },
-  goliath:    { label: 'Goliath',    cell: [2, 0, 0, 0, 1, 0, 0, 0], reg: -10, tempo: -6, dyn: +0.20 },
-  aasimar:    { label: 'Aasimar',    cell: [2, 0, 0, 1, 0, 0, 1, 0], reg: +5,  rev: +0.20, tension: -0.10 },
+  human:      { label: 'Human',      beats: 4, cell: [2, 0, 1, 0, 2, 0, 1, 0] },
+  elf:        { label: 'Elf',        beats: 4, cell: [2, 0, 0, 1, 0, 0, 2, 0, 0, 1, 0, 0],
+                reg: +7,  orn: +0.25, legato: 1.40, rev: +0.10 },
+  dwarf:      { label: 'Dwarf',      beats: 4, swing: 0.18, cell: [2, 0, 0, 2, 0, 0, 1, 0],
+                reg: -12, orn: -0.10, dyn: +0.10, drone: true },
+  halfling:   { label: 'Halfling',   beats: 4, swing: 0.33, cell: [2, 0, 1, 1, 0, 1, 0, 1],
+                reg: +5,  tempo: +10, legato: 0.65, leap: +0.10 },
+  gnome:      { label: 'Gnome',      beats: 5, cell: [2, 1, 0, 1, 1, 0, 1, 1, 0, 1],
+                reg: +7,  tempo: +12, orn: +0.30, leap: +0.15, legato: 0.70 },
+  tiefling:   { label: 'Tiefling',   beats: 5, swing: 0.12, cell: [2, 0, 1, 0, 0, 1, 1, 0, 1, 0],
+                tension: +0.25, orn: +0.15, reg: -3 },
+  dragonborn: { label: 'Dragonborn', beats: 3, cell: [2, 0, 0, 0, 1, 0],
+                reg: -5,  tempo: -8, dyn: +0.15 },
+  halforc:    { label: 'Half-Orc',   beats: 4, cell: [2, 0, 0, 1, 2, 0, 0, 1],
+                reg: -7,  tempo: +4, dyn: +0.15, orn: -0.15 },
+  halfelf:    { label: 'Half-Elf',   beats: 4, cell: [2, 0, 1, 0, 1, 0, 2, 0, 0, 1, 0, 0],
+                reg: +3,  orn: +0.12, legato: 1.15 },
+  tabaxi:     { label: 'Tabaxi',     beats: 4, swing: 0.40, cell: [0, 1, 1, 0, 2, 0, 1, 1],
+                tempo: +10, sync: +0.20, legato: 0.60, leap: +0.15 },
+  goliath:    { label: 'Goliath',    beats: 3, cell: [2, 0, 0, 1, 0, 0],
+                reg: -10, tempo: -6, dyn: +0.20 },
+  aasimar:    { label: 'Aasimar',    beats: 4, cell: [2, 0, 0, 0, 1, 0, 2, 0, 0, 1, 0, 0],
+                reg: +5,  rev: +0.20, tension: -0.10 },
 };
 
 /* Traits own how the melody behaves: loud or quiet, smooth or jagged, busy or
@@ -201,6 +231,8 @@ function characterToParams(ch) {
      are trying to avoid. */
   p.motif = cls.motif;
   p.cell = race.cell;
+  p.beats = race.beats || 4;
+  p.swing = race.swing || 0;
 
   /* A second class brings its own motif in as a fork: a short deviation in a
      second voice, so the multiclass is heard as "and also", not as a blur. */
@@ -216,8 +248,9 @@ function characterToParams(ch) {
     p.tension += (second.tension || 0) * 0.4;
   }
 
-  p.mode = MODES[align.mode];
+  p.mode = MODES[align.mode].steps;
   p.modeName = align.mode;
+  p.colour = MODES[align.mode].colour;
 
   /* The key itself comes from the name, so two identical builds with different
      names are still distinguishable, but the character stays recognisable. */

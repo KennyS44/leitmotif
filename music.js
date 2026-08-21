@@ -36,7 +36,15 @@ function rng(seed) {
 
 const PHRASES = 4;
 const BARS_PER_PHRASE = 4;
-const SLOTS = 8;                    /* eighth notes in a 4/4 bar */
+
+/* Where each part sits, in semitones above the character's root. The order is
+   fixed and the whole stack moves together, so a low character lowers the
+   entire band rather than dropping its melody underneath its own accompaniment
+   — which is what made the low characters sound muddy and quarrelsome. */
+const BASS = 0;
+const PAD = 12;
+const COUNTER = 19;
+const LEAD = 26;
 
 /* A A' B A''. The B phrase lifts the same motif to a different step of the
    scale — contrast without introducing a stranger. */
@@ -69,7 +77,7 @@ function scalePitch(p, degree) {
    allowed to thin it or fill it in, but never to replace it — the pulse has to
    survive so that the character still walks the way its race walks. */
 function buildCell(p) {
-  const cell = (p.cell || [2, 0, 1, 0, 2, 0, 1, 0]).slice();
+  const cell = (p.cell && p.cell.length ? p.cell : [2, 0, 1, 0, 2, 0, 1, 0]).slice();
   const rand = rng(p.seed ^ 0x9e3779b9);
 
   let budget = Math.round(p.cellMod * 8);
@@ -150,18 +158,37 @@ const ROLE_SALT = { state: 0x1f2e3d, vary: 0x4c5b6a, turn: 0x778899, close: 0xaa
 
 function composeScore(p) {
   const beat = 60 / p.tempo;
-  const barDur = beat * 4;
-  const slotDur = barDur / SLOTS;
+  const beats = p.beats || 4;
+  const barDur = beat * beats;
 
   const cell = buildCell(p);
+  const SLOTS = cell.length;
+  const slotDur = barDur / SLOTS;
+  const swing = p.swing || 0;
+  /* off-beats pushed late: the difference between marching and lurching */
+  const timeOf = (slot) => slot * slotDur + (slot % 2 ? swing * slotDur * 0.5 : 0);
+
   const onsets = onsetsOf(cell);
   const motif = (p.motif && p.motif.length ? p.motif : [0, 2, 4, 2]).slice();
   const branch = p.branchMotif || null;
   const spread = 0.70 + p.leap;      /* traits widen or narrow the same shape */
 
-  const bassRoot = p.root;
-  const padRoot = p.root + 12;
-  const leadCentre = p.root + 24 + p.reg;
+  /* Notes shorter than this read as a stab rather than as part of a line, no
+     matter what the tempo is. Everything gets a small overlap on top, so one
+     note is still sounding as the next begins. */
+  const MIN_NOTE = 0.16;
+  const OVERLAP = 0.04;
+
+  const stack = Math.max(-12, Math.min(12, p.reg));
+  const bassRoot = p.root + BASS + stack;
+  const padRoot = p.root + PAD + stack;
+  const floor = padRoot + 12;        /* nothing melodic may sink into the pad */
+  /* A motif that dips below its starting note would drag the melody down into
+     the chord. Rather than clamping the notes — which would flatten the shape —
+     the whole melody is lifted by however far its motif reaches down. */
+  const dip = Math.min(0, ...motif.map((d) => scalePitch(p, d)));
+  const counterCentre = p.root + COUNTER + stack - dip;
+  const leadCentre = p.root + LEAD + stack - dip;
 
   const tracks = { lead: [], counter: [], pad: [], bass: [], perc: [] };
 
@@ -169,40 +196,64 @@ function composeScore(p) {
   const homePick = HOME_CHORDS.slice().sort(
     (a, b) => Math.abs(a.settled - p.cadence) - Math.abs(b.settled - p.cadence))[0];
 
+  /* A bar of five beats lasts a quarter longer than a bar of four, and sixteen
+     of them run past a minute. Wide metres get three-bar phrases so that every
+     character lands near the same shareable length. */
+  const barsPerPhrase = beats >= 5 ? 3 : BARS_PER_PHRASE;
+  const trim = (arr) => (barsPerPhrase === 4 ? arr : [arr[0], arr[1], arr[3]]);
+
   for (let ph = 0; ph < PHRASES; ph += 1) {
     const form = FORM[ph];
-    const chords = form.chords === 'home' ? homePick.degrees : AWAY_CHORDS;
+    const roles = trim(form.roles);
+    const chords = trim(form.chords === 'home' ? homePick.degrees : AWAY_CHORDS);
     /* only the contrast phrase moves; the A phrases all sit at the same height
        so that the last one is heard as a return and not as a third idea */
     const lift = form.lift ? form.lift + Math.round(p.rise * 3) : 0;
 
-    for (let b = 0; b < BARS_PER_PHRASE; b += 1) {
-      const bar = ph * BARS_PER_PHRASE + b;
+    for (let b = 0; b < barsPerPhrase; b += 1) {
+      const bar = ph * barsPerPhrase + b;
       const t = bar * barDur;
-      const role = form.roles[b];
+      const role = roles[b];
       const chordDeg = chords[b];
-      const lastBar = ph === PHRASES - 1 && b === BARS_PER_PHRASE - 1;
+      const lastBar = ph === PHRASES - 1 && b === barsPerPhrase - 1;
 
-      /* --- harmony: one chord per bar, held ------------------------- */
-      const tones = [0, 2, 4].map((s) => scalePitch(p, (lastBar ? 0 : chordDeg) + s));
-      if (p.tension > 0.40) tones.push(scalePitch(p, chordDeg + 6));
-      if (p.tension > 0.65) tones.push(scalePitch(p, chordDeg + 1) + 12);
-      tones.forEach((semi) => {
-        tracks.pad.push({ t, midi: padRoot + semi, dur: barDur * 0.98, vel: 0.30 + p.dyn * 0.12 });
-      });
+      /* --- harmony: one chord per bar, held across bars that repeat ---
+         Close position only, no octave doubling on top: a spread chord reaches
+         up into the melody's register and the two start fighting over the same
+         air. The pad's job is to sit underneath and be forgotten. */
+      const deg = lastBar ? 0 : chordDeg;
+      const nextDeg = b + 1 < barsPerPhrase ? chords[b + 1] : -99;
+      const held = deg === nextDeg;   /* same chord next bar: do not re-strike */
+      const prevDeg = b > 0 ? chords[b - 1] : -99;
+      if (deg !== prevDeg) {
+        const tones = padVoicing(p, deg);
+        const len = (held ? barDur * 2 : barDur) - OVERLAP;
+        tones.forEach((semi) => {
+          tracks.pad.push({ t, midi: padRoot + semi, dur: len + OVERLAP * 2,
+                            vel: 0.28 + p.dyn * 0.10 });
+        });
+      }
 
       /* --- bass: the accents of the cell, nothing else --------------- */
       if (p.drone && b === 0) {
-        const len = barDur * BARS_PER_PHRASE * 0.99;
+        const len = barDur * barsPerPhrase * 0.99;
         tracks.bass.push({ t, midi: bassRoot, dur: len, vel: 0.38 });
         tracks.bass.push({ t, midi: bassRoot + 7, dur: len, vel: 0.28 });
       }
-      const root = bassRoot + (scalePitch(p, lastBar ? 0 : chordDeg) % 12);
-      cell.forEach((v, s) => {
-        if (v !== 2) return;
+      /* ionian bends no degree, so it gets a pedal instead: the bass stays on
+         the tonic under the moving chords, which is a colour of its own */
+      const pedal = p.colour === null;
+      const chordRoot = ((scalePitch(p, pedal ? 0 : deg) % 12) + 12) % 12;
+      const accents = cell.map((v, s) => (v === 2 ? s : -1)).filter((s) => s >= 0);
+      accents.forEach((s, i) => {
+        const nextAccent = i + 1 < accents.length ? accents[i + 1] : SLOTS;
+        /* both the root and its fifth are folded into the octave below the pad,
+           so the bass can never climb over the chord sitting above it */
+        const semi = i === 0 ? chordRoot : (chordRoot + 7) % 12;
         tracks.bass.push({
-          t: t + s * slotDur, midi: s === 0 ? root : root + 7,
-          dur: slotDur * 2.4, vel: 0.42 + p.dyn * 0.14,
+          t: t + timeOf(s), midi: bassRoot + semi,
+          dur: Math.max(MIN_NOTE, (nextAccent - s) * slotDur) + OVERLAP,
+          vel: 0.42 + p.dyn * 0.14,
         });
       });
 
@@ -225,58 +276,89 @@ function composeScore(p) {
         /* anchor only the ends of the bar to the harmony: enough to keep the
            chord honest, not enough to erase the shape of the motif */
         if (first || (last && role === 'close')) degree = nearestChordTone(p, degree, chordDeg);
+        /* Once a phrase, land on the mode's colour note. Without this the mode
+           exists only in the scale the other notes happen to avoid, and every
+           alignment ends up sounding like the same plain major. */
+        const isColour = p.colour !== null && role === 'vary' && last;
+        if (isColour) degree = lift + p.colour;
         if (lastBar && last) degree = 0;
 
         const next = i + 1 < onsets.length ? onsets[i + 1] : SLOTS;
-        const dur = Math.max(slotDur * 0.6, (next - slot) * slotDur * p.legato);
+        const gap = (next - slot) * slotDur;
+        const dur = Math.max(MIN_NOTE, gap * p.legato) + OVERLAP;
         const accent = cell[slot] === 2;
         tracks.lead.push({
-          t: t + slot * slotDur,
-          midi: leadCentre + scalePitch(p, degree),
+          t: t + timeOf(slot),
+          midi: Math.max(floor, leadCentre + scalePitch(p, degree)),
           dur,
-          vel: p.dyn * (accent ? 1.0 : 0.78),
+          colour: isColour && !(lastBar && last),
+          /* the swing between accented and unaccented notes is small on
+             purpose: a line whose loudness keeps jumping stops being heard as
+             one line and starts being heard as separate events */
+          vel: p.dyn * (accent ? 1.0 : 0.86),
         });
 
         /* ornaments only decorate accents, and only sometimes — scattered
            grace notes were half of why the first version sounded loose */
         if (accent && barRand() < p.orn * 0.5 && slot > 0) {
           tracks.lead.push({
-            t: t + slot * slotDur - slotDur * 0.26,
+            t: t + timeOf(slot) - slotDur * 0.26,
             midi: leadCentre + scalePitch(p, degree + 1),
             dur: slotDur * 0.22,
             vel: p.dyn * 0.55,
+            grace: true,
           });
         }
       });
 
-      /* --- the second class: a short fork under the melody ---------- */
+      /* --- the second class: a fork off the motif -------------------
+         Consecutive onsets, one register, one steady level. A handful of notes
+         scattered across a bar are heard as so many foreign objects poking into
+         the melody; the same notes in a row are heard as a second voice. */
       if (branch && (role === 'turn' || (role === 'vary' && !useBranch))) {
         const fork = shapeMotif(branch, 'turn');
-        onsets.filter((s) => cell[s] === 1).slice(0, fork.length).forEach((slot, i) => {
+        const start = onsets.findIndex((s) => cell[s] === 1);
+        const run = onsets.slice(Math.max(0, start), Math.max(0, start) + fork.length);
+        run.forEach((slot, i) => {
+          const next = onsets[onsets.indexOf(slot) + 1];
+          const gap = ((next === undefined ? SLOTS : next) - slot) * slotDur;
           tracks.counter.push({
-            t: t + slot * slotDur,
-            midi: leadCentre - 12 + scalePitch(p, lift + fork[i]),
-            dur: slotDur * 1.6 * p.legato,
-            vel: p.dyn * 0.5,
+            t: t + timeOf(slot),
+            midi: Math.max(floor, counterCentre + scalePitch(p, lift + fork[i])),
+            dur: Math.max(MIN_NOTE, gap * p.legato) + OVERLAP,
+            vel: p.dyn * 0.46,
           });
         });
       }
 
       /* --- percussion: the same cell, played by the kit ------------- */
-      addPerc(tracks.perc, p, t, slotDur, cell, bar);
+      addPerc(tracks.perc, p, t, timeOf, cell, bar);
     }
   }
 
-  const duration = PHRASES * BARS_PER_PHRASE * barDur + 2.4;
-  return { duration, barDur, cell, motif, tracks };
+  const duration = PHRASES * barsPerPhrase * barDur + 2.4;
+  return { duration, barDur, beats, barsPerPhrase, cell, motif, swing, tracks };
+}
+
+/* The pad's voicing, and the one place the mode's colour is guaranteed to be
+   heard in the harmony even if the melody is busy elsewhere. */
+function padVoicing(p, deg) {
+  const tones = [0, 2, 4];
+  if (p.colour === null) tones[1] = 3;        /* suspended fourth for ionian */
+  if (p.tension > 0.45) tones.push(6);        /* a seventh on top */
+  const out = tones.map((s) => scalePitch(p, deg + s));
+  if (p.colour !== null && p.tension > 0.25) out.push(scalePitch(p, p.colour));
+  /* folded into a single octave, so that a chord with a seventh on top cannot
+     climb into the melody's register and start an argument with it */
+  return [...new Set(out.map((s) => ((s % 12) + 12) % 12))];
 }
 
 /* The kit reads the cell rather than a pattern of its own, which is what makes
    the drums sound like they are playing with the tune and not next to it. */
-function addPerc(out, p, t, slotDur, cell, bar) {
+function addPerc(out, p, t, timeOf, cell, bar) {
   if (!p.perc) return;
   const v = 0.42 + p.dyn * 0.25;
-  const push = (slot, kind, vel) => out.push({ t: t + slot * slotDur, kind, vel });
+  const push = (slot, kind, vel) => out.push({ t: t + timeOf(slot), kind, vel });
 
   cell.forEach((val, s) => {
     if (!val) return;
@@ -305,8 +387,8 @@ function addPerc(out, p, t, slotDur, cell, bar) {
   /* an extra stroke on the last onset of every second bar, so the four-bar
      phrase has a seam you can hear — still on the grid, like everything else */
   if (bar % 2 === 1 && (p.perc === 'martial' || p.perc === 'heavy')) {
-    const onsets = cell.map((v2, i) => (v2 ? i : -1)).filter((i) => i >= 0);
-    push(onsets[onsets.length - 1], p.perc === 'heavy' ? 'tom' : 'snare', v * 0.5);
+    const marks = cell.map((v2, i) => (v2 ? i : -1)).filter((i) => i >= 0);
+    push(marks[marks.length - 1], p.perc === 'heavy' ? 'tom' : 'snare', v * 0.5);
   }
 }
 
