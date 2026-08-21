@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leitmotif — mapping prototype</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="head">
+  <p class="head__kicker">Prototype · step 1 of the project</p>
+  <h1 class="head__title">Leitmotif</h1>
+  <p class="head__lede">
+    Six D&amp;D characters, six themes, generated in your browser from nothing but
+    the character sheet. No interface yet, no accounts, no polish — this page
+    exists to answer one question: <strong>can you hear the difference?</strong>
+  </p>
+  <p class="head__note">
+    Play them one after another. Each theme runs about 40&nbsp;seconds and is the
+    same every time you press play.
+  </p>
+</header>
+
+<main id="list" class="list"></main>
+
+<footer class="foot">
+  <h2 class="foot__title">What is actually happening</h2>
+  <p>
+    Every field of the sheet owns a different musical axis, so that changing one
+    of them is always audible: <strong>class</strong> chooses the instruments,
+    <strong>race</strong> sets rhythm and register, <strong>alignment</strong>
+    picks the mode and the harmonic tension, <strong>traits</strong> shape how the
+    melody moves, <strong>looks</strong> shape the timbre and the room.
+  </p>
+  <p>
+    The sound is synthesised from scratch — no samples, no files, no server. The
+    same character always produces the same theme, which is what will let a
+    shared link play the tune the sender heard.
+  </p>
+</footer>
+
+<script src="mapping.js"></script>
+<script src="music.js"></script>
+<script src="characters.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
