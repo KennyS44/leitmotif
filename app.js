@@ -54,39 +54,6 @@ function play(ch, card, button) {
 
 /* ---------------------------------------------------------------- export */
 
-function encodeWav(buffer) {
-  const chans = buffer.numberOfChannels;
-  const frames = buffer.length;
-  const bytes = frames * chans * 2;
-  const view = new DataView(new ArrayBuffer(44 + bytes));
-  const str = (off, s) => { for (let i = 0; i < s.length; i += 1) view.setUint8(off + i, s.charCodeAt(i)); };
-
-  str(0, 'RIFF');
-  view.setUint32(4, 36 + bytes, true);
-  str(8, 'WAVEfmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, chans, true);
-  view.setUint32(24, buffer.sampleRate, true);
-  view.setUint32(28, buffer.sampleRate * chans * 2, true);
-  view.setUint16(32, chans * 2, true);
-  view.setUint16(34, 16, true);
-  str(36, 'data');
-  view.setUint32(40, bytes, true);
-
-  const data = [];
-  for (let c = 0; c < chans; c += 1) data.push(buffer.getChannelData(c));
-  let off = 44;
-  for (let i = 0; i < frames; i += 1) {
-    for (let c = 0; c < chans; c += 1) {
-      const v = Math.max(-1, Math.min(1, data[c][i]));
-      view.setInt16(off, v < 0 ? v * 0x8000 : v * 0x7fff, true);
-      off += 2;
-    }
-  }
-  return new Blob([view.buffer], { type: 'audio/wav' });
-}
-
 async function renderOffline(ch) {
   const p = characterToParams(ch);
   const score = composeScore(p);
@@ -97,15 +64,58 @@ async function renderOffline(ch) {
   return ctx.startRendering();
 }
 
+/* The encoder is 156 KB, so it is fetched the first time somebody actually asks
+   for a file rather than on every page load. It is a separate, unmodified file
+   under its own licence — see vendor/lamejs-LICENSE.txt. */
+let encoderLoading = null;
+function loadEncoder() {
+  if (window.lamejs) return Promise.resolve();
+  if (!encoderLoading) {
+    encoderLoading = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'vendor/lame.min.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('encoder failed to load'));
+      document.head.appendChild(s);
+    });
+  }
+  return encoderLoading;
+}
+
+function encodeMp3(buffer) {
+  const rate = buffer.sampleRate;
+  const enc = new window.lamejs.Mp3Encoder(2, rate, 192);
+  const toPcm = (f32) => {
+    const out = new Int16Array(f32.length);
+    for (let i = 0; i < f32.length; i += 1) {
+      const v = Math.max(-1, Math.min(1, f32[i]));
+      out[i] = v < 0 ? v * 0x8000 : v * 0x7fff;
+    }
+    return out;
+  };
+  const left = toPcm(buffer.getChannelData(0));
+  const right = toPcm(buffer.getChannelData(buffer.numberOfChannels > 1 ? 1 : 0));
+  const chunks = [];
+  const block = 1152;
+  for (let i = 0; i < left.length; i += block) {
+    const part = enc.encodeBuffer(left.subarray(i, i + block), right.subarray(i, i + block));
+    if (part.length) chunks.push(new Uint8Array(part));
+  }
+  const tail = enc.flush();
+  if (tail.length) chunks.push(new Uint8Array(tail));
+  return new Blob(chunks, { type: 'audio/mpeg' });
+}
+
 async function download(ch, button) {
   const label = button.textContent;
   button.disabled = true;
-  button.textContent = 'Rendering…';
+  button.textContent = T('rendering');
   try {
-    const blob = encodeWav(await renderOffline(ch));
+    await loadEncoder();
+    const blob = encodeMp3(await renderOffline(ch));
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `${ch.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.wav`;
+    a.download = `${ch.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.mp3`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -125,6 +135,70 @@ const VOICE_NAMES = {
   organ: 'organ', whistle: 'low whistle', glass: 'glass',
 };
 
+const EN = {
+  ui: {
+    kicker: 'Prototype · step 1 of the project',
+    lede: 'Six D&amp;D characters, six themes, generated in your browser from nothing but the character sheet. No interface yet, no accounts, no polish — this page exists to answer one question: <strong>can you hear the difference?</strong>',
+    note: 'Play them one after another. Each theme runs about 40 seconds and is the same every time you press play.',
+    play: 'Play theme',
+    stop: 'Stop',
+    save: 'Download MP3',
+    rendering: 'Rendering…',
+    footTitle: 'What is actually happening',
+    foot: [
+      'A theme is built from two things. The <strong>class</strong> supplies a <strong>motif</strong> — a handful of intervals that is stated, answered and brought back rather than re-invented every bar. The <strong>race</strong> supplies the <strong>metre and the bar of rhythm</strong>, drawn under each card above: how many beats there are, how they are subdivided, and whether the off-beats are pushed late. The melody, the bass and the drums all take their onsets from that one grid, so they sound like one band.',
+      '<strong>Alignment</strong> picks the mode — and, more importantly, the one degree that mode bends. A theme that never sounds its mode’s <strong>colour note</strong> is in that mode on paper only, so every theme lands on it once a phrase. Plain major bends nothing, which is why it gets a suspended chord and a pedal bass instead of a colour.',
+      'A <strong>second class</strong> answers the motif in another voice, speaking in the melody’s silences rather than beside it, and the race brings <strong>an instrument of its own</strong> — a harp for elves, an organ for dwarves — that arrives partway through and leaves again.',
+      'Nobody plays all the way through. Open an arranged song in a sequencer and most of the grid is empty: parts enter and leave at section boundaries. So the four phrases are staged — melody and bass alone, then chords, then everything leaning into the third phrase, then the full return.',
+      '<strong>Traits</strong> thin or fill the rhythm and widen or narrow the motif’s reach, and <strong>looks</strong> set the register, the timbre and the size of the room. The parts are stacked in a fixed order — bass, chords, second voice, melody — and the whole stack moves together, so a low character lowers the entire band instead of burying its own tune.',
+    ],
+  },
+  why: {
+    over: 'over', answering: 'answering', arriving: 'arriving partway',
+    pedal: 'mode on a pedal', leaning: 'mode, leaning on its',
+    beats: 'beats', at: 'at', bpm: 'bpm', swung: 'swung', beat: 'beat',
+    drone: 'an open drone beneath', rough: 'a rough edge on the tone',
+    unresolved: 'unresolved harmony', bigRoom: 'a large room',
+    dryRoom: 'a dry, close room',
+  },
+  colours: ['', 'flat second', 'flat third', 'sharp fourth',
+            'flat fifth', 'natural sixth', 'flat seventh'],
+};
+
+/* Language is remembered, because nobody wants to pick it on every visit. */
+let lang = localStorage.getItem('leitmotif.lang') || 'en';
+const dict = () => (lang === 'ru' ? window.I18N.ru : EN);
+
+const T = (key) => (dict().ui && dict().ui[key]) || EN.ui[key] || key;
+const W = (key) => (dict().why && dict().why[key]) || EN.why[key] || key;
+
+/* Labels live in mapping.js in English; the dictionary only overrides them. */
+function label(kind, key, fallback) {
+  const table = dict()[kind];
+  return (table && table[key]) || fallback || key;
+}
+
+/* English gets away with one plural; Russian needs three forms chosen by the
+   last digit of the number. Languages without the forms just get the default. */
+function plural(n, key, fallback) {
+  const forms = dict().why && dict().why[key];
+  if (!forms) return fallback;
+  const last = n % 10;
+  const tens = n % 100;
+  if (last === 1 && tens !== 11) return forms[0];
+  if (last >= 2 && last <= 4 && (tens < 12 || tens > 14)) return forms[1];
+  return forms[2];
+}
+
+const voiceName = (v) => label('voices', v, VOICE_NAMES[v] || v);
+const modeName = (m) => label('modes', m, m);
+const colourName = (i) => (dict().colours || EN.colours)[i] || EN.colours[i];
+
+function preset(ch) {
+  const over = (dict().presets || {})[ch.name];
+  return { name: (over && over.name) || ch.name, blurb: (over && over.blurb) || ch.blurb };
+}
+
 /* The race's bar of rhythm, drawn: a filled circle is an accent, a hollow one
    an ordinary note. Everything in the theme lands on these. */
 function rhythmGlyphs(p) {
@@ -133,53 +207,56 @@ function rhythmGlyphs(p) {
     .join('');
 }
 
-const COLOUR_NAMES = ['', 'flat second', 'flat third', 'sharp fourth',
-                      'flat fifth', 'natural sixth', 'flat seventh'];
-
 function why(p) {
   const bits = [
-    `<b>${VOICE_NAMES[p.lead] || p.lead}</b> over ${VOICE_NAMES[p.pad] || p.pad}`,
-    p.counter ? `with <b>${VOICE_NAMES[p.counter]}</b> answering` : null,
-    p.hue ? `<b>${VOICE_NAMES[p.hue]}</b> arriving partway` : null,
+    `<b>${voiceName(p.lead)}</b> ${W('over')} ${voiceName(p.pad)}`,
+    p.counter ? `<b>${voiceName(p.counter)}</b> ${W('answering')}` : null,
+    p.hue ? `<b>${voiceName(p.hue)}</b> ${W('arriving')}` : null,
     p.colour === null
-      ? `<b>${p.modeName}</b> mode on a pedal`
-      : `<b>${p.modeName}</b> mode, leaning on its <b>${COLOUR_NAMES[p.colour]}</b>`,
-    `<b>${p.beats}</b> beats at <b>${p.tempo}</b> bpm${p.swing ? ', swung' : ''}`,
-    `beat <b class="beat">${rhythmGlyphs(p)}</b>`,
-    p.drone ? 'an open drone beneath' : null,
-    p.rough > 0.25 ? 'a rough edge on the tone' : null,
-    p.tension > 0.45 ? 'unresolved harmony' : null,
-    p.rev > 0.45 ? 'a large room' : (p.rev < 0.2 ? 'a dry, close room' : null),
+      ? `<b>${modeName(p.modeName)}</b> ${W('pedal')}`
+      : `<b>${modeName(p.modeName)}</b> ${W('leaning')} <b>${colourName(p.colour)}</b>`,
+    `<b>${p.beats}</b> ${plural(p.beats, 'beatForms', W('beats'))} ${W('at')} <b>${p.tempo}</b> ${W('bpm')}`
+      + `${p.swing ? `, ${W('swung')}` : ''}`,
+    `${W('beat')} <b class="beat">${rhythmGlyphs(p)}</b>`,
+    p.drone ? W('drone') : null,
+    p.rough > 0.25 ? W('rough') : null,
+    p.tension > 0.45 ? W('unresolved') : null,
+    p.rev > 0.45 ? W('bigRoom') : (p.rev < 0.2 ? W('dryRoom') : null),
   ].filter(Boolean);
   return bits.join(' · ');
 }
 
 function tagList(ch) {
   const items = [];
-  (ch.traits || []).forEach((t) => TRAITS[t] && items.push(TRAITS[t].label));
-  (ch.looks || []).forEach((t) => LOOKS[t] && items.push(LOOKS[t].label));
+  (ch.traits || []).forEach((t) => TRAITS[t] && items.push(label('traits', t, TRAITS[t].label)));
+  (ch.looks || []).forEach((t) => LOOKS[t] && items.push(label('looks', t, LOOKS[t].label)));
   return items.map((t) => `<li>${t}</li>`).join('');
 }
 
 function sheetLine(ch) {
-  const cls = CLASSES[ch.cls].label + (ch.second ? ` / ${CLASSES[ch.second].label}` : '');
-  return `${RACES[ch.race].label} ${cls} · ${ALIGNMENTS[ch.alignment].label}`;
+  const one = (k) => label('classes', k, CLASSES[k].label);
+  const cls = one(ch.cls) + (ch.second ? ` / ${one(ch.second)}` : '');
+  return `${label('races', ch.race, RACES[ch.race].label)} ${cls}`
+    + ` · ${label('alignments', ch.alignment, ALIGNMENTS[ch.alignment].label)}`;
 }
 
 function build() {
+  stop();
   const list = document.getElementById('list');
+  list.innerHTML = '';
   window.PRESETS.forEach((ch) => {
     const p = characterToParams(ch);
+    const shown = preset(ch);
     const card = document.createElement('article');
     card.className = 'card';
     card.innerHTML = `
-      <h2 class="card__name">${ch.name}</h2>
+      <h2 class="card__name">${shown.name}</h2>
       <p class="card__sheet">${sheetLine(ch)}</p>
-      <p class="card__blurb">${ch.blurb}</p>
+      <p class="card__blurb">${shown.blurb}</p>
       <ul class="tags">${tagList(ch)}</ul>
       <div class="card__actions">
-        <button class="btn--play" type="button">Play theme</button>
-        <button class="btn--save" type="button">Download WAV</button>
+        <button class="btn--play" type="button">${T('play')}</button>
+        <button class="btn--save" type="button">${T('save')}</button>
       </div>
       <div class="bar"><span class="bar__fill"></span></div>
       <p class="card__why">${why(p)}</p>
@@ -190,7 +267,29 @@ function build() {
       .addEventListener('click', (e) => download(ch, e.currentTarget));
     list.appendChild(card);
   });
+
+  document.documentElement.lang = lang;
+  document.getElementById('kicker').innerHTML = T('kicker');
+  document.getElementById('lede').innerHTML = T('lede');
+  document.getElementById('note').innerHTML = T('note');
+  document.getElementById('foot-title').textContent = T('footTitle');
+  const foot = dict().ui && dict().ui.foot;
+  if (foot) {
+    document.getElementById('foot-body').innerHTML =
+      foot.map((para) => `<p>${para}</p>`).join('');
+  }
+  [...document.querySelectorAll('.lang button')].forEach((b) => {
+    b.setAttribute('aria-pressed', String(b.dataset.lang === lang));
+  });
 }
+
+document.querySelector('.lang').addEventListener('click', (e) => {
+  const pick = e.target.closest('button');
+  if (!pick || pick.dataset.lang === lang) return;
+  lang = pick.dataset.lang;
+  localStorage.setItem('leitmotif.lang', lang);
+  build();
+});
 
 build();
 window.addEventListener('pagehide', stop);

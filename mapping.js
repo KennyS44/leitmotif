@@ -64,20 +64,29 @@ const ALIGNMENTS = {
  *
  * `lead` carries it, `pad` is the bed underneath, `perc` is the kit. A subclass
  * or second class brings its own motif in as a fork. */
+/* Cleric and Paladin are deliberately far apart now, on the reading that their
+ * official descriptions all but hand over: a cleric "reaches out to the divine
+ * magic of the Outer Planes and channels it", a paladin is "united by oaths"
+ * and "lives on the front lines". One receives power from outside, the other
+ * swore it himself. So the cleric is a conduit — organ and choir, instruments
+ * with no attack, that sound like a building rather than a person, a narrow
+ * stepwise line that unfolds rather than pushes. The paladin asserts — brass
+ * with a real attack, a marching kit, a motif that reaches up a fourth and
+ * lands. Wisdom keeps a melody even; Charisma makes it reach. */
 const CLASSES = {
   fighter:    { label: 'Fighter',    motif: [0, 4, 3, 0],     lead: 'brass',  pad: 'strings', perc: 'martial', tempo:  +6, dyn: +0.10 },
-  paladin:    { label: 'Paladin',    motif: [0, 4, 2, 4, 7],  lead: 'brass',  pad: 'choir',   perc: 'martial', tempo:  -4, dyn: +0.10 },
-  barbarian:  { label: 'Barbarian',  motif: [0, 1, 0, -4],    lead: 'horn',   pad: 'strings', perc: 'heavy',   tempo:  +4, dyn: +0.15, rough: 0.30, reg: -12 },
-  cleric:     { label: 'Cleric',     motif: [0, 2, 4, 2],     lead: 'strings',pad: 'choir',   perc: 'frame',   tempo:  -8, rev: +0.15 },
-  druid:      { label: 'Druid',      motif: [0, 1, 3, 1],     lead: 'flute',  pad: 'air',     perc: 'frame',   tempo:  -2, orn: +0.20 },
-  ranger:     { label: 'Ranger',     motif: [0, 2, 4, 3],     lead: 'flute',  pad: 'strings', perc: 'frame',   tempo:  +2, cellMod: -0.10 },
-  rogue:      { label: 'Rogue',      motif: [0, -1, 1, -2],   lead: 'pizz',   pad: 'air',     perc: 'light',   tempo:  +6, sync: +0.20, cellMod: -0.10 },
+  paladin:    { label: 'Paladin',    motif: [0, 4, 2, 4, 7],  lead: 'brass',  pad: 'choir',   perc: 'martial', tempo:  -4, dyn: +0.14, leap: +0.15, cadence: +0.20, attack: 0.80 },
+  barbarian:  { label: 'Barbarian',  motif: [0, 1, 0, -4],    lead: 'horn',   pad: 'dark',    perc: 'heavy',   tempo:  +4, dyn: +0.15, rough: 0.42, reg: -12, attack: 0.70 },
+  cleric:     { label: 'Cleric',     motif: [0, 2, 3, 2],     lead: 'organ',  pad: 'choir',   perc: 'frame',   tempo: -12, rev: +0.20, leap: -0.15, cadence: +0.15, attack: 1.50 },
+  druid:      { label: 'Druid',      motif: [0, 1, 3, 1],     lead: 'whistle',pad: 'air',     perc: 'frame',   tempo:  -2, orn: +0.20 },
+  ranger:     { label: 'Ranger',     motif: [0, 2, 4, 3],     lead: 'fiddle', pad: 'strings', perc: 'frame',   tempo:  +2, cellMod: -0.10 },
+  rogue:      { label: 'Rogue',      motif: [0, -1, 1, -2],   lead: 'pizz',   pad: 'dark',    perc: 'light',   tempo:  +6, sync: +0.20, cellMod: -0.10 },
   bard:       { label: 'Bard',       motif: [0, 2, 1, 4, 2],  lead: 'lute',   pad: 'strings', perc: 'light',   tempo:  +8, orn: +0.20 },
   monk:       { label: 'Monk',       motif: [0, 2, 0, -2],    lead: 'flute',  pad: 'air',     perc: 'wood',    tempo:  +4, cellMod: -0.10 },
-  wizard:     { label: 'Wizard',     motif: [0, 3, 5, 7],     lead: 'bell',   pad: 'air',     perc: 'wood',    tempo:  -4, rev: +0.15 },
-  sorcerer:   { label: 'Sorcerer',   motif: [0, 4, 6, 3],     lead: 'bell',   pad: 'air',     perc: 'light',   tempo:  +2, orn: +0.25, rev: +0.10 },
+  wizard:     { label: 'Wizard',     motif: [0, 3, 5, 7],     lead: 'harp',   pad: 'glass',   perc: 'wood',    tempo:  -4, rev: +0.15 },
+  sorcerer:   { label: 'Sorcerer',   motif: [0, 4, 6, 3],     lead: 'glass',  pad: 'air',     perc: 'light',   tempo:  +2, orn: +0.25, rev: +0.10 },
   warlock:    { label: 'Warlock',    motif: [0, -1, -3, -2],  lead: 'bell',   pad: 'dark',    perc: 'frame',   tempo:  -6, tension: +0.25, reg: -5 },
-  artificer:  { label: 'Artificer',  motif: [0, 1, 2, 0],     lead: 'lute',   pad: 'air',     perc: 'wood',    tempo:  +4, sync: +0.20 },
+  artificer:  { label: 'Artificer',  motif: [0, 1, 2, 0],     lead: 'strings',pad: 'organ',   perc: 'wood',    tempo:  +4, sync: +0.20 },
 };
 
 /* Race owns the rhythm — and not only which slots are struck, but the shape of
@@ -97,8 +106,8 @@ const CLASSES = {
  * kit plays all of it — one grid, so the parts sound like one band. */
 const RACES = {
   human:      { label: 'Human',      beats: 4, cell: [2, 0, 1, 0, 2, 0, 1, 0] },
-  elf:        { label: 'Elf', hue: 'harp',        beats: 4, cell: [2, 0, 0, 1, 0, 0, 2, 0, 0, 1, 0, 0],
-                reg: +7,  orn: +0.25, legato: 1.40, rev: +0.10 },
+  elf:        { label: 'Elf', hue: 'flute',       beats: 4, cell: [2, 0, 0, 1, 0, 0, 2, 0, 0, 1, 0, 0],
+                reg: +4,  orn: +0.25, legato: 1.40, rev: +0.10 },
   dwarf:      { label: 'Dwarf', hue: 'organ',      beats: 4, swing: 0.18, cell: [2, 0, 0, 2, 0, 0, 1, 0],
                 reg: -12, orn: -0.10, dyn: +0.10, drone: true },
   halfling:   { label: 'Halfling', hue: 'fiddle',   beats: 4, swing: 0.33, cell: [2, 0, 1, 1, 0, 1, 0, 1],
@@ -247,6 +256,14 @@ function characterToParams(ch) {
   p.perc = cls.perc || (second && second.perc) || null;
   p.counter = second && second.lead !== cls.lead ? second.lead : null;
   p.branchMotif = second ? second.motif : null;
+  /* A race colour that happens to be the class's own lead adds nothing — a
+     dwarf cleric would be organ answered by organ. Fall back to the first
+     instrument nobody else in the band is using. */
+  const taken = [p.lead, p.pad, p.counter];
+  if (p.hue && taken.includes(p.hue)) {
+    p.hue = ['harp', 'flute', 'fiddle', 'glass', 'whistle', 'lute', 'bell']
+      .find((v) => !taken.includes(v)) || null;
+  }
   if (second) {
     /* a fraction of the second class's character, so the mix leans primary */
     p.tempo += (second.tempo || 0) * 0.4;

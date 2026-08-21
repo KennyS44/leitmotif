@@ -380,8 +380,27 @@ function composeScore(p) {
     }
   }
 
-  const duration = PHRASES * barsPerPhrase * barDur + 2.4;
-  return { duration, barDur, beats, barsPerPhrase, cell, motif, swing, tracks };
+  /* --- the ending -------------------------------------------------
+     The theme used to stop and let the reverb carry it away, which reads as
+     running out rather than finishing. It now lands: every part strikes the
+     tonic together, once, and holds. A piece that ends on a decision sounds
+     finished; one that fades sounds abandoned. */
+  const endAt = PHRASES * barsPerPhrase * barDur;
+  const hold = Math.max(1.8, barDur * 0.9);
+  const tonic = scalePitch(p, 0);
+  tracks.bass.push({ t: endAt, midi: bassRoot + tonic, dur: hold, vel: 0.62 });
+  padVoicing(p, 0).forEach((semi) => {
+    tracks.pad.push({ t: endAt, midi: padRoot + semi, dur: hold, vel: 0.40 });
+  });
+  tracks.lead.push({ t: endAt, midi: leadCentre + tonic, dur: hold, vel: Math.min(1, p.dyn * 1.15) });
+  if (p.hue) tracks.hue.push({ t: endAt, midi: padRoot + 12 + tonic, dur: hold, vel: 0.42 });
+  if (p.perc) {
+    tracks.perc.push({ t: endAt, kind: 'gong', vel: 0.55 + p.dyn * 0.25 });
+    tracks.perc.push({ t: endAt, kind: 'kick', vel: 0.60 + p.dyn * 0.25 });
+  }
+
+  const duration = endAt + hold + 1.6;
+  return { duration, barDur, beats, barsPerPhrase, cell, motif, swing, endAt, tracks };
 }
 
 /* The pad's voicing, and the one place the mode's colour is guaranteed to be
@@ -772,6 +791,8 @@ function playHit(ctx, dest, hit) {
     case 'shaker': noise(7200, 'highpass', 0.8, 0.055, 0.16); break;
     case 'wood':   noise(2500, 'bandpass', 9.0, 0.05, 0.30); break;
     case 'frame':  noise(420, 'lowpass', 1.0, 0.24, 0.30); thump(110, 74, 0.22, 0.30); break;
+    /* the closing stroke: a long metallic wash under the final chord */
+    case 'gong':   noise(1100, 'bandpass', 0.5, 2.6, 0.20); thump(90, 58, 1.4, 0.34); break;
     default: break;
   }
 }
@@ -805,23 +826,43 @@ function renderScore(ctx, score, p, startAt) {
   verb.buffer = impulse(ctx, 1.2 + p.rev * 2.6, 2.6);
   wet.connect(verb); verb.connect(master); dry.connect(master);
 
-  const bus = (level) => {
+  /* Everything except the bass is cleared out below its own lowest note. Two
+     parts both putting energy at the bottom is what mud is: neither is heard
+     down there, and both lose definition higher up. A gentle dip around 3 kHz
+     takes the glare off the sawtooth voices at the same time. */
+  const bus = (level, clean) => {
     const g = ctx.createGain();
     g.gain.value = level;
-    g.connect(dry); g.connect(wet);
+    let node = g;
+    if (clean) {
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = clean;
+      hp.Q.value = 0.7;
+      node.connect(hp);
+      const tame = ctx.createBiquadFilter();
+      tame.type = 'peaking';
+      tame.frequency.value = 3000;
+      tame.Q.value = 1.0;
+      tame.gain.value = -3.5;
+      hp.connect(tame);
+      node = tame;
+    }
+    node.connect(dry); node.connect(wet);
     return g;
   };
 
-  const leadBus = bus(1.0);
-  const counterBus = bus(0.62);
-  const hueBus = bus(0.50);
-  const padBus = bus(0.52);
-  const bassBus = bus(0.80);
+  const low = freqOf(p.root + 12);          /* the pad's own bottom note */
+  const leadBus = bus(1.0, low * 1.5);
+  const counterBus = bus(0.62, low * 1.2);
+  const hueBus = bus(0.50, low * 1.2);
+  const padBus = bus(0.52, low * 0.9);
+  const bassBus = bus(0.80);                /* the only part allowed down there */
   const percBus = ctx.createGain();
   percBus.gain.value = 0.72;
   percBus.connect(dry);
   const percWet = ctx.createGain();
-  percWet.gain.value = 0.35;
+  percWet.gain.value = 0.22;                /* dry drums, so they stay tight */
   percBus.connect(percWet); percWet.connect(wet);
 
   const shift = (n) => ({ ...n, t: n.t + t0 });

@@ -79,9 +79,10 @@ function check(name, cond, detail) {
         || Math.abs(rem - barDur - a) < 0.003);
     };
 
-    /* signature of a bar = its melodic shape, independent of where it sits */
+    /* signature of a bar = its melodic shape, independent of where it sits.
+       The closing chord sits past the last bar and is not part of the pattern. */
     const bars = {};
-    s.tracks.lead.forEach((n) => {
+    s.tracks.lead.filter((n) => n.t < s.endAt - 1e-6).forEach((n) => {
       const b = Math.floor(n.t / barDur + 1e-6);
       (bars[b] = bars[b] || []).push(n.midi);
     });
@@ -249,6 +250,24 @@ function check(name, cond, detail) {
   check('brightness differs across characters',
     Math.max(...brights) - Math.min(...brights) > 200,
     `${Math.min(...brights)} … ${Math.max(...brights)}`);
+
+  /* --- the ending ---------------------------------------------------- */
+  const endings = await page.evaluate(() => window.PRESETS.map((ch) => {
+    const p = window.Leitmotif.characterToParams(ch);
+    const s = window.Leitmotif.composeScore(p);
+    const at = (arr) => arr.filter((n) => Math.abs(n.t - s.endAt) < 0.01).length;
+    return {
+      name: ch.name,
+      together: at(s.tracks.lead) + at(s.tracks.pad) + at(s.tracks.bass),
+      gong: s.tracks.perc.some((h) => h.kind === 'gong'),
+      tail: +(s.duration - s.endAt).toFixed(1),
+    };
+  }));
+  endings.forEach((e) => {
+    check(`${e.name}: the ending lands together`, e.together >= 4,
+      `${e.together} parts strike the final chord`);
+    check(`${e.name}: there is room for the chord to ring`, e.tail >= 3, `${e.tail}s`);
+  });
 
   const uniqueRms = new Set(audio.map((a) => a.rms)).size;
   check('every character renders distinct audio', uniqueRms === audio.length,

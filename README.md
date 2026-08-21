@@ -18,7 +18,8 @@ only if the answer is yes.
 | `mapping.js` | character sheet → musical parameters. The whole idea of the project lives here |
 | `music.js` | parameters → a score, and a score → sound. Knows nothing about D&D |
 | `characters.js` | six presets, chosen to sit far apart |
-| `app.js` | the page: play, stop, export to WAV |
+| `i18n.js` | Russian for the prototype; English is the default and the fallback |
+| `app.js` | the page: play, stop, language switch, export to MP3 |
 
 The split is deliberate. The synthesiser can be replaced without touching the
 character logic, and the character logic can be re-tuned without breaking the
@@ -72,6 +73,13 @@ is drowned out by another, and that the page holds up at 390px.
 
 It cannot tell whether the music is *good*. That judgement is the point of the
 prototype and belongs to a human.
+
+## Third-party code
+
+`vendor/lame.min.js` is [lamejs](https://github.com/zhuker/lamejs), unmodified,
+under the LGPL — see `vendor/lamejs-LICENSE.txt`. It is fetched only when
+somebody asks for a file, so the page itself carries no dependency. Nothing else
+in the project has one.
 
 ## Not here yet
 

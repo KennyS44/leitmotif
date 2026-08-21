@@ -9,69 +9,33 @@
 <body>
 
 <header class="head">
-  <p class="head__kicker">Prototype · step 1 of the project</p>
+  <div class="lang" role="group" aria-label="Language">
+    <button type="button" data-lang="en" aria-pressed="true">EN</button>
+    <button type="button" data-lang="ru" aria-pressed="false">RU</button>
+  </div>
+  <p class="head__kicker" id="kicker">Prototype · step 1 of the project</p>
   <h1 class="head__title">Leitmotif</h1>
-  <p class="head__lede">
-    Six D&amp;D characters, six themes, generated in your browser from nothing but
-    the character sheet. No interface yet, no accounts, no polish — this page
-    exists to answer one question: <strong>can you hear the difference?</strong>
-  </p>
-  <p class="head__note">
-    Play them one after another. Each theme runs about 40&nbsp;seconds and is the
-    same every time you press play.
-  </p>
+  <p class="head__lede" id="lede"></p>
+  <p class="head__note" id="note"></p>
 </header>
 
 <main id="list" class="list"></main>
 
 <footer class="foot">
-  <h2 class="foot__title">What is actually happening</h2>
-  <p>
-    A theme is built from two things. The <strong>class</strong> supplies a
-    <strong>motif</strong> — a handful of intervals that is stated, answered and
-    brought back rather than re-invented every bar. The <strong>race</strong>
-    supplies the <strong>metre and the bar of rhythm</strong>, drawn under each
-    card above: how many beats there are, how they are subdivided, and whether
-    the off-beats are pushed late. The melody, the bass and the drums all take
-    their onsets from that one grid, so they sound like one band.
-  </p>
-  <p>
-    <strong>Alignment</strong> picks the mode — and, more importantly, the one
-    degree that mode bends. A theme that never sounds its mode's
-    <strong>colour note</strong> is in that mode on paper only, so every theme
-    lands on it once a phrase. Plain major bends nothing, which is why it gets a
-    suspended chord and a pedal bass instead of a colour.
-  </p>
-  <p>
-    A <strong>second class</strong> answers the motif in another voice, speaking
-    in the melody's silences rather than beside it, and the race brings
-    <strong>an instrument of its own</strong> — a harp for elves, an organ for
-    dwarves — that arrives partway through and leaves again.
-  </p>
-  <p>
-    Nobody plays all the way through. Open an arranged song in a sequencer and
-    most of the grid is empty: parts enter and leave at section boundaries.
-    So the four phrases are staged — melody and bass alone, then chords, then
-    everything leaning into the third phrase, then the full return.
-  </p>
-  <p>
-    <strong>Traits</strong> thin or fill the rhythm and widen or narrow the
-    motif's reach, and <strong>looks</strong> set the register, the timbre and
-    the size of the room. The parts are stacked in a fixed order — bass, chords,
-    second voice, melody — and the whole stack moves together, so a low
-    character lowers the entire band instead of burying its own tune.
-  </p>
-  <p>
-    Four phrases, arranged so the first one returns as the last. The sound is
-    synthesised from scratch — no samples, no files, no server — and the same
-    character always produces the same theme, which is what will let a shared
-    link play the tune the sender heard.
+  <h2 class="foot__title" id="foot-title">What is actually happening</h2>
+  <div id="foot-body"></div>
+  <p class="foot__fine">
+    The sound is synthesised from scratch — no samples, no files, no server — and
+    the same character always produces the same theme. MP3 encoding uses
+    <a href="vendor/lamejs-LICENSE.txt">lamejs</a>, loaded only when you ask for a
+    file.
   </p>
 </footer>
 
 <script src="mapping.js"></script>
 <script src="music.js"></script>
 <script src="characters.js"></script>
+<script src="i18n.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
