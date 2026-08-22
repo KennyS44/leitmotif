@@ -336,6 +336,7 @@ build();
 window.addEventListener('pagehide', stop);
 
 /* handles for the test harness */
-window.Leitmotif = { characterToParams, composeScore, renderOffline, stop };
+window.Leitmotif = { characterToParams, composeScore, renderOffline, stop,
+                     VOICES: window.Mapping.VOICES };
 
 }());

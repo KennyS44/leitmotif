@@ -218,6 +218,70 @@ function check(name, cond, detail) {
   check('every character gets its own motif', motifs.size === structure.length,
     `${motifs.size} distinct of ${structure.length}`);
 
+  /* --- one band, not several soloists --------------------------------
+   *
+   * The complaint these guard against: some pairings were heard as two or
+   * three different tunes running at once rather than as one theme. Three
+   * things have to hold for a set of instruments to read as an ensemble. */
+  const band = await page.evaluate(() => window.PRESETS.concat(
+    /* the awkward combinations are the ones that used to split apart, so a
+       few deliberately mismatched sheets are tested alongside the presets */
+    [{ name: 'Bright vs Dark', cls: 'warlock', race: 'aasimar', alignment: 'CE',
+       traits: ['cheerful'], looks: ['radiant'] },
+     { name: 'Loud vs Quiet', cls: 'barbarian', race: 'gnome', alignment: 'LG',
+       traits: ['shy'], looks: ['small'] }],
+  ).map((ch) => {
+    const p = window.Leitmotif.characterToParams(ch);
+    const s = window.Leitmotif.composeScore(p);
+    const bars = Math.round(s.endAt / s.barDur);
+    const leadAt = new Set(s.tracks.lead.map((n) => n.t.toFixed(4)));
+    const barsWith = (tr) => new Set(tr.map((n) => Math.floor(n.t / s.barDur + 1e-6))).size;
+    return {
+      name: ch.name,
+      hue: p.hue,
+      /* every colour-instrument note must be struck together with a melody
+         note — that simultaneity is what fuses two instruments into one
+         voice instead of leaving them as two lines sharing a room */
+      hueWithLead: s.tracks.hue.length
+        ? s.tracks.hue.every((n) => leadAt.has(n.t.toFixed(4))) : null,
+      /* and it must not be there the whole time: an instrument present in
+         every bar is a part, one that arrives for a moment is an accent */
+      hueBars: barsWith(s.tracks.hue),
+      counterBars: barsWith(s.tracks.counter),
+      bars,
+      /* nothing accompanying may shine above the melody, or the ear promotes
+         it to a tune of its own. The map hands down a ceiling for exactly
+         this, so the ceiling must exist wherever the voice is brighter. */
+      blend: ['counter', 'hue', 'pad'].map((k) => {
+        const v = { counter: p.counter || p.lead, hue: p.hue || p.lead, pad: p.pad }[k];
+        const V = window.Leitmotif.VOICES;
+        const over = V[v] && V[p.lead] ? V[v].bright - V[p.lead].bright : 0;
+        return { k, over: +over.toFixed(2), tone: Math.round(p.blend[k].tone),
+                 gain: +p.blend[k].gain.toFixed(2) };
+      }),
+    };
+  }));
+
+  band.forEach((s) => {
+    if (s.hueWithLead !== null) {
+      check(`${s.name}: the colour instrument doubles the melody`, s.hueWithLead);
+      check(`${s.name}: the colour instrument comes and goes`,
+        s.hueBars < s.bars * 0.6, `${s.hueBars} bars of ${s.bars}`);
+    }
+    if (s.counterBars) {
+      check(`${s.name}: the second voice comes and goes`,
+        s.counterBars < s.bars, `${s.counterBars} bars of ${s.bars}`);
+    }
+    s.blend.forEach((b) => {
+      if (b.over > 0.02) {
+        check(`${s.name}: the ${b.k} is capped below the melody`,
+          b.tone > 0 && b.tone < 9000, `brighter by ${b.over}, ceiling ${b.tone}Hz`);
+      }
+      check(`${s.name}: the ${b.k} trim stays usable`,
+        b.gain >= 0.55 && b.gain <= 1, `gain ${b.gain}`);
+    });
+  });
+
   /* Two characters of the same class must be relatives, not twins: the same
      allowed intervals and direction, a different tune. */
   const kin = await page.evaluate(() => {

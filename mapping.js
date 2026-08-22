@@ -155,6 +155,102 @@ const SUBCLASSES = {
   },
 };
 
+/* WHAT EACH INSTRUMENT IS LIKE, so that instruments can be chosen against each
+ * other instead of one at a time.
+ *
+ * Until now the four voices were picked independently — the class named its
+ * lead and its pad, the second class named the counter, the race named its
+ * colour — and the only rule between them was "do not repeat the lead". That is
+ * a rule about difference, and difference is precisely what makes a band sound
+ * like several soloists who happen to share a room.
+ *
+ * Instruments fuse into one voice when they agree and split into separate tunes
+ * when they compete. Two things decide which happens:
+ *
+ *   bright — where the instrument puts its energy. Whatever is brightest is
+ *            heard as the melody. An accompanying part brighter than the lead
+ *            takes the top of the mix away from it, and the ear promotes it to
+ *            a tune of its own.
+ *   bite   — how hard the note starts. Parts that start alike merge into a
+ *            blur; parts that start differently stay legible as one line and
+ *            its answer without fighting.
+ *   cut    — how much the instrument forces itself through everything else.
+ *            A bell at half the level of a choir is still louder to the ear.
+ *   fam    — how the sound is made. Relatives blend; strangers stack.
+ */
+const VOICES = {
+  brass:   { fam: 'brass',  bright: 0.70, bite: 0.55, cut: 0.90 },
+  horn:    { fam: 'brass',  bright: 0.40, bite: 0.40, cut: 0.70 },
+  strings: { fam: 'bowed',  bright: 0.55, bite: 0.20, cut: 0.55 },
+  fiddle:  { fam: 'bowed',  bright: 0.72, bite: 0.45, cut: 0.75 },
+  choir:   { fam: 'vocal',  bright: 0.40, bite: 0.10, cut: 0.45 },
+  air:     { fam: 'vocal',  bright: 0.35, bite: 0.05, cut: 0.30 },
+  dark:    { fam: 'synth',  bright: 0.15, bite: 0.10, cut: 0.35 },
+  pulse:   { fam: 'synth',  bright: 0.68, bite: 0.70, cut: 0.80 },
+  organ:   { fam: 'pipe',   bright: 0.50, bite: 0.35, cut: 0.65 },
+  flute:   { fam: 'pipe',   bright: 0.62, bite: 0.30, cut: 0.55 },
+  whistle: { fam: 'pipe',   bright: 0.48, bite: 0.25, cut: 0.45 },
+  glass:   { fam: 'struck', bright: 0.88, bite: 0.35, cut: 0.70 },
+  bell:    { fam: 'struck', bright: 0.92, bite: 0.80, cut: 0.95 },
+  lute:    { fam: 'pluck',  bright: 0.60, bite: 0.80, cut: 0.70 },
+  pizz:    { fam: 'pluck',  bright: 0.58, bite: 0.90, cut: 0.75 },
+  harp:    { fam: 'pluck',  bright: 0.66, bite: 0.60, cut: 0.60 },
+};
+
+/* How well a candidate would sit behind a lead that is already chosen. Higher
+   is a better fit, and nothing ever returns zero — a poor fit is still a sound,
+   and the map should lean rather than forbid. */
+function voiceFit(cand, lead) {
+  const c = VOICES[cand];
+  const l = VOICES[lead];
+  if (!c || !l) return 0.5;
+  let s = 1;
+  /* the one rule that matters most: stay under the melody */
+  s -= Math.max(0, c.bright - l.bright) * 1.6;
+  /* a different attack is what lets two parts be told apart without either of
+     them having to get louder */
+  s += Math.min(0.45, Math.abs(c.bite - l.bite)) * 0.8;
+  /* a relative of the lead blends into it; that is what an accompaniment is */
+  s += c.fam === l.fam ? 0.30 : 0;
+  /* and it must not shove as hard as the thing it is accompanying */
+  s -= Math.max(0, c.cut - l.cut + 0.10) * 1.2;
+  return Math.max(0.05, s);
+}
+
+/* Once the instruments are known, each accompanying one is trimmed to fit the
+   lead it actually got — not to a fixed number decided in advance. The same
+   harp sits differently behind a brass paladin and behind a choir cleric, and
+   the fixed levels were a large part of why some pairings read as two pieces of
+   music playing at once.
+ *
+ *   gain — pulled down by however much harder this voice cuts than the lead
+ *   tone — a ceiling on its brightness, so nothing shines above the melody */
+function blendFor(voice, lead) {
+  const c = VOICES[voice];
+  const l = VOICES[lead];
+  if (!c || !l) return { gain: 1, tone: 0 };
+  const over = Math.max(0, c.bright - l.bright);
+  return {
+    gain: clamp(1 - Math.max(0, c.cut - l.cut) * 0.9, 0.55, 1),
+    /* 0 means "no ceiling"; anything brighter than the lead gets one, and the
+       further over it is, the lower the ceiling comes down */
+    tone: over > 0.02 ? 9000 * Math.pow(0.35, over * 2.2) : 0,
+  };
+}
+
+/* A seeded draw that leans towards the voices which fit — variety, but only
+   among instruments that will actually sit behind this lead. */
+function weightedPick(list, lead, seed) {
+  const w = list.map((v) => voiceFit(v, lead));
+  const total = w.reduce((a, b) => a + b, 0);
+  let r = seeded(seed >>> 0)() * total;
+  for (let i = 0; i < list.length; i += 1) {
+    r -= w[i];
+    if (r <= 0) return list[i];
+  }
+  return list[list.length - 1];
+}
+
 /* Race owns the rhythm — and not only which slots are struck, but the shape of
    the bar itself: how many beats it has, how those beats are subdivided, and
    whether the off-beats are pushed late.
@@ -354,13 +450,24 @@ function characterToParams(ch) {
     /* Picked by seed, not by taking the first free name off a list — that
        version handed a harp to almost everybody and quietly undid the variety
        the colour instrument was added for. Doubling the pad is allowed; only
-       answering the lead with the lead itself is pointless. */
+       answering the lead with the lead itself is pointless.
+     *
+     * The draw is now weighted by how well each candidate would sit behind
+     * this particular lead, so the replacement is still a surprise but never
+     * an instrument that will turn into a competing tune. */
     const spare = ['harp', 'flute', 'fiddle', 'glass', 'whistle', 'lute', 'bell',
                    'choir', 'horn', 'organ', 'pizz']
       .filter((v) => !taken.includes(v) && v !== p.pad);
-    p.hue = spare.length
-      ? spare[Math.floor(seeded(p.seed ^ 0x1b873593)() * spare.length)] : null;
+    p.hue = spare.length ? weightedPick(spare, p.lead, p.seed ^ 0x1b873593) : null;
   }
+  /* Every accompanying voice is now trimmed against the lead it actually ended
+     up with. This is the part that makes an instrument join a band rather than
+     stand next to one: it arrives already knowing what is playing. */
+  p.blend = {
+    counter: blendFor(p.counter || p.lead, p.lead),
+    hue: blendFor(p.hue || p.lead, p.lead),
+    pad: blendFor(p.pad, p.lead),
+  };
   if (second) {
     /* a fraction of the second class's character, so the mix leans primary */
     p.tempo += (second.tempo || 0) * 0.4;
@@ -486,4 +593,4 @@ function characterSeed(ch) {
 }
 
 window.Mapping = { characterToParams, characterSeed, hashString, SUBCLASSES,
-                   CLASSES, RACES, ALIGNMENTS, TRAITS, LOOKS, MODES };
+                   CLASSES, RACES, ALIGNMENTS, TRAITS, LOOKS, MODES, VOICES };

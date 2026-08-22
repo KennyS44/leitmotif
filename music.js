@@ -298,6 +298,7 @@ function composeScore(p) {
          how many bars came before it. That is what lets the fourth phrase come
          back as the first one rather than as something merely similar. */
       const barRand = rng((p.seed ^ ROLE_SALT[role] ^ (b * 2654435761)) >>> 0);
+      const leadStart = tracks.lead.length;
       const seq = shapeMotif(motif, role);
       /* the second class takes over the answering bar once, in the second
          phrase only — leaving the first and last phrases identical, so the
@@ -330,6 +331,7 @@ function composeScore(p) {
           t: t + timeOf(slot),
           midi: Math.max(floor, leadCentre + scalePitch(p, degree)),
           dur,
+          accent,
           colour: isColour && !(lastBar && last),
           /* the swing between accented and unaccented notes is small on
              purpose: a line whose loudness keeps jumping stops being heard as
@@ -356,17 +358,26 @@ function composeScore(p) {
          now speaks in the melody's silences and joins it on the bar's last
          accent, a third below. Answering and agreeing are what make two voices
          sound like one piece of music. */
-      if (plan.counter && branch && role !== 'close') {
-        const fork = shapeMotif(branch, 'turn');
-        const gaps = cell.map((v, s) => (v ? -1 : s)).filter((s) => s > 0);
-        gaps.slice(0, fork.length).forEach((slot, i) => {
-          tracks.counter.push({
-            t: t + timeOf(slot),
-            midi: Math.max(floor, counterCentre + scalePitch(p, lift + fork[i])),
-            dur: Math.max(MIN_NOTE, slotDur * 1.5 * p.legato) + OVERLAP,
-            vel: p.dyn * 0.44 * swell,
+      if (plan.counter && branch) {
+        /* The fork is what the second class actually says, so it is kept for
+           the bars that are answers — and only those. Speaking in every bar is
+           what turned "and also a rogue" into a rogue playing a different
+           song. */
+        if (role === 'vary' || role === 'turn') {
+          const fork = shapeMotif(branch, 'turn');
+          const gaps = cell.map((v, s) => (v ? -1 : s)).filter((s) => s > 0);
+          gaps.slice(0, fork.length).forEach((slot, i) => {
+            tracks.counter.push({
+              t: t + timeOf(slot),
+              midi: Math.max(floor, counterCentre + scalePitch(p, lift + fork[i])),
+              dur: Math.max(MIN_NOTE, slotDur * 1.5 * p.legato) + OVERLAP,
+              vel: p.dyn * 0.44 * swell,
+            });
           });
-        });
+        }
+        /* In every bar it is present, including the ones where it says nothing
+           of its own, it lands on the melody's last note with it, a third
+           below. Agreeing on the cadence is what makes two voices one band. */
         const together = tracks.lead[tracks.lead.length - 1];
         if (together && !together.grace) {
           tracks.counter.push({
@@ -378,17 +389,42 @@ function composeScore(p) {
         }
       }
 
-      /* --- the race's own instrument, coming and going -------------- */
-      if (plan.hue && p.hue) {
-        const marks = cell.map((v, s) => (v === 2 ? s : -1)).filter((s) => s >= 0);
-        marks.forEach((slot, i) => {
-          tracks.hue.push({
-            t: t + timeOf(slot),
-            midi: padRoot + 12 + scalePitch(p, deg + (i % 2 ? 4 : 0)),
-            dur: barDur * 0.5,
-            vel: p.dyn * 0.34 * swell,
+      /* --- the race's own instrument: reinforcement, not a rival -----
+       *
+       * This part used to invent its own line — chord tones on every accent of
+       * nearly every bar, in its own instrument, for three phrases out of four.
+       * That is a second tune by construction, and it is most of the reason
+       * some pairings were heard as several pieces of music at once.
+       *
+       * Two instruments fuse into one voice when they play the same notes at
+       * the same instant, and split into two streams when they play different
+       * notes at different times. So the colour instrument now plays the
+       * melody's own accents, struck together with it, an octave down — it
+       * thickens the theme instead of running beside it.
+       *
+       * And it does not stay. It comes in at the head of a phrase and through
+       * the build, where the arrangement wants weight, then leaves. An
+       * instrument that is present the whole way is heard as a part; one that
+       * arrives for a moment is heard as an accent. */
+      const shine = plan.hue && p.hue && (b === 0 || plan.build);
+      if (shine) {
+        tracks.lead.slice(leadStart)
+          .filter((n) => n.accent && !n.grace)
+          .forEach((n) => {
+            tracks.hue.push({
+              /* exactly together with the melody note: any gap and the ear
+                 hears two players rather than one thicker sound */
+              t: n.t,
+              /* an octave below, so the doubling adds body without taking the
+                 top of the mix away from the melody it is reinforcing —
+                 except at the peak of the build, where unison is the weight */
+              /* clamping to the floor would land on some other pitch entirely
+                 and clash; if there is no room below, double at pitch */
+              midi: !plan.build && n.midi - 12 >= floor ? n.midi - 12 : n.midi,
+              dur: Math.max(n.dur, slotDur * 1.4),
+              vel: p.dyn * 0.30 * swell,
+            });
           });
-        });
       }
 
       /* --- percussion --------------------------------------------- */
@@ -900,10 +936,23 @@ function renderScore(ctx, score, p, startAt) {
      parts both putting energy at the bottom is what mud is: neither is heard
      down there, and both lose definition higher up. A gentle dip around 3 kHz
      takes the glare off the sawtooth voices at the same time. */
-  const bus = (level, clean) => {
+  const bus = (level, clean, ceiling) => {
     const g = ctx.createGain();
     g.gain.value = level;
     let node = g;
+    /* A ceiling on brightness, handed down by the map. Whatever is brightest in
+       a mix is heard as the melody, so an accompanying instrument that shines
+       above the lead gets promoted by the ear into a tune of its own. Rolling
+       its top off is what puts it back underneath — and it is decided from the
+       pair that actually met, not from a fixed number. */
+    if (ceiling) {
+      const lid = ctx.createBiquadFilter();
+      lid.type = 'lowpass';
+      lid.frequency.value = ceiling;
+      lid.Q.value = 0.6;
+      node.connect(lid);
+      node = lid;
+    }
     if (clean) {
       const hp = ctx.createBiquadFilter();
       hp.type = 'highpass';
@@ -923,10 +972,16 @@ function renderScore(ctx, score, p, startAt) {
   };
 
   const low = freqOf(p.root + 12);          /* the pad's own bottom note */
+  /* The trims the map worked out for this particular set of instruments. A harp
+     sits differently behind a brass paladin than behind a choir cleric, and the
+     fixed levels that used to be here were part of why some pairings read as
+     two pieces of music playing at once. */
+  const bl = p.blend || {};
+  const fit = (k) => bl[k] || { gain: 1, tone: 0 };
   const leadBus = bus(1.0, low * 1.5);
-  const counterBus = bus(0.62, low * 1.2);
-  const hueBus = bus(0.50, low * 1.2);
-  const padBus = bus(0.52, low * 0.9);
+  const counterBus = bus(0.62 * fit('counter').gain, low * 1.2, fit('counter').tone);
+  const hueBus = bus(0.50 * fit('hue').gain, low * 1.2, fit('hue').tone);
+  const padBus = bus(0.52 * fit('pad').gain, low * 0.9, fit('pad').tone);
   const bassBus = bus(0.80);                /* the only part allowed down there */
   const percBus = ctx.createGain();
   percBus.gain.value = 0.72;
