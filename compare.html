@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leitmotif — A/B</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="head">
+  <p class="head__kicker">Workbench · not the product</p>
+  <h1 class="head__title">A/B</h1>
+  <p class="head__lede">
+    Two or three versions of the same edit on <strong>one timeline</strong>.
+    Switching keeps the moment, so the second version starts where the first one
+    was — there is no gap to forget across. Then the answer is a letter.
+  </p>
+  <p class="head__note">
+    Keys: <b>space</b> plays and stops, <b>1</b>–<b>9</b> switch version,
+    <b>←</b> <b>→</b> move by a second.
+  </p>
+</header>
+
+<main class="list">
+  <article class="card" id="bench">
+    <div class="pick">
+      <label class="pick__label" for="who">Character</label>
+      <select id="who" class="pick__select"></select>
+      <button id="roll" type="button">Roll a stranger</button>
+    </div>
+
+    <p class="card__sheet" id="sheet"></p>
+
+    <div class="versions" id="versions" role="group" aria-label="Version"></div>
+    <p class="card__blurb" id="note"></p>
+
+    <div class="card__actions">
+      <button class="btn--play" id="play" type="button">Play</button>
+      <span class="ready" id="ready" aria-live="polite"></span>
+    </div>
+
+    <div class="transport">
+      <input class="seek" id="seek" type="range" min="0" max="100" step="1" value="0"
+             aria-label="Position in the theme">
+      <p class="time"><span class="time__now">0:00</span> / <span class="time__total">0:00</span></p>
+    </div>
+
+    <p class="card__why" id="why"></p>
+  </article>
+</main>
+
+<footer class="foot">
+  <p><a href="index.html">← back to the themes</a></p>
+  <p class="foot__fine">
+    Every version is levelled to the same peak before it is played. Without that
+    the louder one wins whatever else it does, and the comparison measures
+    volume rather than the edit.
+  </p>
+</footer>
+
+<script src="mapping.js"></script>
+<script src="music.js"></script>
+<script src="render.js"></script>
+<script src="player.js"></script>
+<script src="characters.js"></script>
+<script src="variants.js"></script>
+<script src="compare.js"></script>
+</body>
+</html>

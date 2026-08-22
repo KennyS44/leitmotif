@@ -17,9 +17,15 @@ only if the answer is yes.
 |---|---|
 | `mapping.js` | character sheet → musical parameters. The whole idea of the project lives here |
 | `music.js` | parameters → a score, and a score → sound. Knows nothing about D&D |
-| `characters.js` | six presets, chosen to sit far apart |
+| `render.js` | sheet → an audio buffer, in one place, so both pages make sound identically |
+| `player.js` | one thing sounds at a time, and whatever sounds can be moved through |
+| `characters.js` | twelve presets, chosen to sit far apart |
 | `i18n.js` | Russian for the prototype; English is the default and the fallback |
-| `app.js` | the page: play, stop, language switch, export to MP3 |
+| `app.js` | the front page: play, stop, language switch, export to MP3 |
+| `compare.js`, `variants.js` | the A/B workbench, and the versions it puts side by side |
+| `metrics.js` | recurring complaints turned into numbers. A test instrument — the site never loads it |
+| `DECISIONS.md` | what has been settled and why, including what was rejected |
+| `dev.sh` | serve, check, publish |
 
 The split is deliberate. The synthesiser can be replaced without touching the
 character logic, and the character logic can be re-tuned without breaking the
@@ -64,15 +70,30 @@ one day store a two-kilobyte recipe instead of a multi-megabyte recording.
 
 ## Tests
 
-`node test.js` against the page on port 20302 renders all six themes offline and
-checks 83 assertions: that a bar shape recurs and most of the theme is built
-from recurring material, that every melody note and every drum hit lands on the
-race's grid, that the opening phrase returns at the end, that the same sheet
-gives the same score twice while one changed trait changes it, that no character
-is drowned out by another, and that the page holds up at 390px.
+`./dev.sh check` starts the server if it is not up and runs the checks. Two
+levels, because they cost very different amounts:
 
-It cannot tell whether the music is *good*. That judgement is the point of the
-prototype and belongs to a human.
+- **the score** — seconds. Structure, grid, layers, form, blend, the endings,
+  the page at 390px, and every complaint measure that needs no audio. Run after
+  every edit.
+- **`--full`** — minutes. All of that, plus rendering each theme to samples:
+  loudness, clipping, brightness, warble, and that the same sheet performs the
+  same way twice. Run once, before publishing.
+
+Nine tenths of what can break is decided in the score and shows up instantly.
+Paying for twelve audio renders to discover that a bar line moved was most of
+the cost of a round.
+
+`metrics.js` turns the complaints that keep recurring — *several tunes at once*,
+*mechanical*, *ragged*, *warbling* — into numbers, so a fix can be checked
+before it is shown to anybody. A finding that is real but not yet decided is
+printed as **open** rather than passed or failed: it holds at no worse than the
+number it was recorded at, and fails if it slips.
+
+None of this can tell whether the music is *good*. That judgement is the point
+of the prototype and belongs to a human — which is what `compare.html` is for:
+two or three versions of one edit on a single timeline, so the answer is a
+letter instead of an essay.
 
 ## Third-party code
 

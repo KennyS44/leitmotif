@@ -10,82 +10,44 @@
 (function page() {
 
 const { characterToParams, CLASSES, RACES, ALIGNMENTS, TRAITS, LOOKS } = window.Mapping;
-const { composeScore, renderScore } = window.Music;
+const { composeScore } = window.Music;
 
-let live = null;        /* { ctx, card, fill, raf, ends } */
+/* Playback, the transport and the rule that only one thing sounds at a time all
+   live in player.js, because the comparison page needs exactly the same ones. */
+const Player = window.Player;
 
-function stop() {
-  if (!live) return;
-  cancelAnimationFrame(live.raf);
-  live.card.classList.remove('is-playing');
-  live.button.textContent = T('play');
-  const dying = live.ctx;
-  live = null;
-  /* closing the context is the one way to silence notes that were already
-     scheduled ahead of time */
-  dying.close().catch(() => {});
+/* Rendered themes are kept: seeking, replaying and saving all reuse the one
+   buffer, and a character is keyed by its own object, so a rolled stranger gets
+   its own entry without anything being hashed. */
+const rendered = new WeakMap();
+function bufferFor(ch) {
+  if (!rendered.has(ch)) rendered.set(ch, renderOffline(ch));
+  return rendered.get(ch);
 }
 
-function play(ch, card, button) {
-  const wasSame = live && live.id === ch.name;
-  stop();
-  if (wasSame) return;
+async function play(ch, ui) {
+  const same = Player.isLive(ui);
+  const resumeAt = ui.pending;
+  Player.stop();
+  if (same) return;
 
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  const p = characterToParams(ch);
-  const score = composeScore(p);
-  const endsAt = renderScore(ctx, score, p);
-
-  card.classList.add('is-playing');
-  button.textContent = T('stop');
-  const fill = card.querySelector('.bar__fill');
-  const startedAt = ctx.currentTime;
-
-  live = { ctx, card, button, id: ch.name, raf: 0 };
-  const tick = () => {
-    if (!live || live.ctx !== ctx) return;
-    const done = (ctx.currentTime - startedAt) / (endsAt - startedAt);
-    fill.style.width = `${Math.min(100, Math.max(0, done * 100))}%`;
-    if (ctx.currentTime >= endsAt) { stop(); return; }
-    live.raf = requestAnimationFrame(tick);
-  };
-  live.raf = requestAnimationFrame(tick);
+  ui.button.disabled = true;
+  ui.button.textContent = T('rendering');
+  let buffer;
+  try {
+    buffer = await bufferFor(ch);
+  } finally {
+    ui.button.disabled = false;
+    ui.button.textContent = T('play');
+  }
+  /* another card may have been pressed while this one was rendering */
+  if (Player.busy()) return;
+  Player.start(buffer, ui, resumeAt);
 }
 
 /* ---------------------------------------------------------------- export */
 
-async function renderOffline(ch) {
-  const p = characterToParams(ch);
-  const score = composeScore(p);
-  const rate = 44100;
-  const OfflineCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-  const ctx = new OfflineCtx(2, Math.ceil(rate * score.duration), rate);
-  renderScore(ctx, score, p, 0);
-  const buffer = await ctx.startRendering();
-  return levelled(buffer);
-}
-
-/* Every theme leaves at the same height. A quiet character should sound quiet
-   in its own shape — soft attacks, a thinner band — not by arriving at a lower
-   volume than the file before it, which just reads as a worse recording. */
-function levelled(buffer) {
-  let peak = 0;
-  for (let c = 0; c < buffer.numberOfChannels; c += 1) {
-    const d = buffer.getChannelData(c);
-    for (let i = 0; i < d.length; i += 1) {
-      const v = Math.abs(d[i]);
-      if (v > peak) peak = v;
-    }
-  }
-  if (peak < 0.0001) return buffer;
-  const gain = Math.min(4, 0.89 / peak);
-  if (Math.abs(gain - 1) < 0.02) return buffer;
-  for (let c = 0; c < buffer.numberOfChannels; c += 1) {
-    const d = buffer.getChannelData(c);
-    for (let i = 0; i < d.length; i += 1) d[i] *= gain;
-  }
-  return buffer;
-}
+const renderOffline = (ch) => window.Render.renderTheme(ch);
 
 /* The encoder is 156 KB, so it is fetched the first time somebody actually asks
    for a file rather than on every page load. It is a separate, unmodified file
@@ -135,7 +97,8 @@ async function download(ch, button) {
   button.textContent = T('rendering');
   try {
     await loadEncoder();
-    const blob = encodeMp3(await renderOffline(ch));
+    /* the same buffer the player uses, so saving after listening costs nothing */
+    const blob = encodeMp3(await bufferFor(ch));
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `${ch.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.mp3`;
@@ -168,6 +131,7 @@ const EN = {
     save: 'Download MP3',
     roll: 'Roll a stranger',
     rendering: 'Rendering…',
+    position: 'Position in the theme',
     footTitle: 'What is actually happening',
     foot: [
       'A theme is built from two things. The <strong>class</strong> supplies a <strong>motif</strong> — a handful of intervals that is stated, answered and brought back rather than re-invented every bar. The <strong>race</strong> supplies the <strong>metre and the bar of rhythm</strong>, drawn under each card above: how many beats there are, how they are subdivided, and whether the off-beats are pushed late. The melody, the bass and the drums all take their onsets from that one grid, so they sound like one band.',
@@ -281,18 +245,27 @@ function cardFor(ch) {
       <button class="btn--play" type="button">${T('play')}</button>
       <button class="btn--save" type="button">${T('save')}</button>
     </div>
-    <div class="bar"><span class="bar__fill"></span></div>
+    ${Player.strip(T('position'))}
     <p class="card__why">${why(p)}</p>
   `;
-  const playBtn = card.querySelector('.btn--play');
-  playBtn.addEventListener('click', () => play(ch, card, playBtn));
+  /* The length comes from the score, which is written in a millisecond, so the
+     card shows how long the theme is before a note of it has been rendered. */
+  const button = card.querySelector('.btn--play');
+  const ui = Player.transport(card, composeScore(p).duration, {
+    state(playing) {
+      card.classList.toggle('is-playing', playing);
+      button.textContent = T(playing ? 'stop' : 'play');
+    },
+  });
+  ui.button = button;
+  button.addEventListener('click', () => play(ch, ui));
   card.querySelector('.btn--save')
     .addEventListener('click', (e) => download(ch, e.currentTarget));
   return card;
 }
 
 function build() {
-  stop();
+  Player.stop();
   const list = document.getElementById('list');
   list.innerHTML = '';
   window.PRESETS.forEach((ch) => list.appendChild(cardFor(ch)));
@@ -333,10 +306,9 @@ document.querySelector('.lang').addEventListener('click', (e) => {
 });
 
 build();
-window.addEventListener('pagehide', stop);
 
 /* handles for the test harness */
-window.Leitmotif = { characterToParams, composeScore, renderOffline, stop,
-                     VOICES: window.Mapping.VOICES };
+window.Leitmotif = { characterToParams, composeScore, renderOffline,
+                     stop: Player.stop, VOICES: window.Mapping.VOICES };
 
 }());
