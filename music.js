@@ -1003,26 +1003,41 @@ function renderScore(ctx, score, p, startAt) {
    * either side of the level, a couple of cents either side of the pitch. Drawn
    * from the character's own seed, so the same sheet still plays the same way
    * everywhere — the untidiness is composed, not random.
+   *
+   * Each part draws from its own stream, salted by name, and not from one
+   * shared one. With a single stream the draws are handed out in track order,
+   * so removing a note from an early part shifts every draw belonging to every
+   * later part: take the second voice out and the drums, the bass and the pad
+   * are all re-performed, from the first bar. Two things change when one was
+   * meant to. That made A/B comparisons meaningless and, worse, quietly
+   * reshuffled the feel of the whole band after any edit to a note count.
    */
-  const human = rng((p.seed ^ 0x632be59b) >>> 0);
-  const wobble = (n) => {
-    const late = (human() - 0.5) * 0.016;
-    return {
-      ...n,
-      /* a grace note before the first beat, nudged earlier still, can land
-         before the start of an offline render, where time cannot be negative */
-      t: Math.max(0, n.t + t0 + late),
-      vel: n.vel === undefined ? n.vel : n.vel * (0.93 + human() * 0.14),
-      cents: (human() - 0.5) * 5,
+  const SALT = { lead: 0x632be59b, counter: 0x85ebca6b, hue: 0xc2b2ae35,
+                 pad: 0x27d4eb2f, bass: 0x165667b1, perc: 0x9e3779b1 };
+  const performer = (part) => {
+    const human = rng((p.seed ^ SALT[part]) >>> 0);
+    return (n) => {
+      const late = (human() - 0.5) * 0.016;
+      return {
+        ...n,
+        /* a grace note before the first beat, nudged earlier still, can land
+           before the start of an offline render, where time cannot be negative */
+        t: Math.max(0, n.t + t0 + late),
+        vel: n.vel === undefined ? n.vel : n.vel * (0.93 + human() * 0.14),
+        cents: (human() - 0.5) * 5,
+      };
     };
   };
-  const shift = wobble;
-  score.tracks.lead.forEach((n) => playNote(ctx, leadBus, p.lead, shift(n), p));
-  score.tracks.counter.forEach((n) => playNote(ctx, counterBus, p.counter || p.lead, shift(n), p));
-  score.tracks.hue.forEach((n) => playNote(ctx, hueBus, p.hue || 'harp', shift(n), p));
-  score.tracks.pad.forEach((n) => playNote(ctx, padBus, p.pad, shift(n), p));
-  score.tracks.bass.forEach((n) => playNote(ctx, bassBus, p.drone ? 'dark' : 'strings', shift(n), p));
-  score.tracks.perc.forEach((h) => playHit(ctx, percBus, shift(h)));
+  const play = (part, fn) => {
+    const shift = performer(part);
+    score.tracks[part].forEach((n) => fn(shift(n)));
+  };
+  play('lead', (n) => playNote(ctx, leadBus, p.lead, n, p));
+  play('counter', (n) => playNote(ctx, counterBus, p.counter || p.lead, n, p));
+  play('hue', (n) => playNote(ctx, hueBus, p.hue || 'harp', n, p));
+  play('pad', (n) => playNote(ctx, padBus, p.pad, n, p));
+  play('bass', (n) => playNote(ctx, bassBus, p.drone ? 'dark' : 'strings', n, p));
+  play('perc', (h) => playHit(ctx, percBus, h));
 
   return t0 + score.duration;
 }

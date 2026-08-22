@@ -466,6 +466,43 @@ function watch(name, held, detail) {
       `worst sample differs by ${steady}`);
   }
 
+  /* Taking a part out must take out that part and nothing else.
+   *
+   * It did not. Every part used to draw its performance jitter from one shared
+   * stream, handed out in track order, so deleting the second voice's notes
+   * shifted every draw belonging to the pad, the bass and the drums — the whole
+   * band was re-performed from the first bar. It made A/B comparisons
+   * meaningless, and it meant any edit to a note count quietly reshuffled the
+   * feel of everything downstream.
+   *
+   * The audio before the removed part's first note must now be untouched. */
+  const isolated = !FULL ? null : await page.evaluate(async () => {
+    const ch = window.PRESETS.find((c) => c.name === 'Ogrim Stoneback');
+    const p = window.Leitmotif.characterToParams(ch);
+    const rate = 44100;
+    const render = async (s) => {
+      const c = new OfflineAudioContext(2, Math.ceil(rate * s.duration), rate);
+      window.Music.renderScore(c, s, p, 0);
+      return (await c.startRendering()).getChannelData(0);
+    };
+    const base = window.Leitmotif.composeScore(p);
+    const cut = window.Leitmotif.composeScore(p);
+    const entersAt = cut.tracks.counter.length ? cut.tracks.counter[0].t : 0;
+    cut.tracks.counter.length = 0;
+    const [x, y] = [await render(base), await render(cut)];
+    let worst = 0;
+    for (let i = 0; i < Math.floor(entersAt * rate); i += 1) {
+      worst = Math.max(worst, Math.abs(x[i] - y[i]));
+    }
+    return { entersAt: +entersAt.toFixed(1), worst: +worst.toFixed(6) };
+  });
+  if (FULL) {
+    check('removing a part leaves the others alone',
+      isolated.worst < 0.001,
+      `before the second voice enters at ${isolated.entersAt}s,`
+      + ` worst sample differs by ${isolated.worst}`);
+  }
+
   /* --- the ending ---------------------------------------------------- */
   const endings = await page.evaluate(() => window.PRESETS.map((ch) => {
     const p = window.Leitmotif.characterToParams(ch);

@@ -89,6 +89,26 @@ is *overlapping while moving independently*, not *not coinciding*.
 minutes, and nine tenths of what breaks is visible in the score. `./dev.sh
 check` after every edit; `--full` once, before publishing.
 
+**Every part performs from its own stream of randomness.** The jitter that keeps
+the playing from sounding mechanical used to be drawn from one shared stream,
+handed out in track order. Deleting the second voice's notes therefore shifted
+every draw belonging to the pad, the bass and the drums: the whole band was
+re-performed from the first bar.
+
+*Found by:* the first real use of the A/B page. Version C ("without the second
+voice") differed from A from second zero, although the second voice does not
+enter until 9.9s. Two things were changing when one was meant to — and worse,
+any edit to a note count had been quietly reshuffling the feel of everything
+below it, round after round. Guarded now by a check.
+
+**An A/B page must show where the versions differ.** The first time it was used,
+all three versions were switched between inside the opening seconds — where they
+are identical, because the part in question had not entered yet. The answer that
+came back was "no difference", and it was correct about the passage being
+listened to. The timeline now carries a map of where the versions part company,
+measured after fitting out any difference in level (a change of loudness is not
+a change of music), and the head is parked just before it.
+
 **Degrees are answered on the A/B page, not guessed.** "Soften it, but only a
 little" costs a whole round if I pick the number. Two or three amounts on one
 timeline, and the answer is a letter.

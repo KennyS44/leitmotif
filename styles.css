@@ -348,6 +348,32 @@ button:disabled:hover { border-color: var(--line); color: var(--text); }
   color: var(--muted);
 }
 
+/* where the versions part company, drawn over the timeline. One column per
+   frame, its opacity the size of the difference — solid where the edit is
+   plainly audible, faint where it is barely there, nothing where the versions
+   are identical. Without it the page invites a verdict on a stretch that is the
+   same in all of them. */
+.diffmap {
+  display: flex;
+  gap: 0;
+  height: 10px;
+  margin-bottom: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--line);
+}
+.diffmap span {
+  flex: 1 1 0;
+  background: var(--accent);
+}
+
+.diffnote {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
 .foot a { color: var(--accent); }
 
 /* roll button, and the cards it produces */

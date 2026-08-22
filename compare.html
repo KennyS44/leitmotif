@@ -42,10 +42,12 @@
     </div>
 
     <div class="transport">
+      <div class="diffmap" id="diffmap" aria-hidden="true"></div>
       <input class="seek" id="seek" type="range" min="0" max="100" step="1" value="0"
              aria-label="Position in the theme">
       <p class="time"><span class="time__now">0:00</span> / <span class="time__total">0:00</span></p>
     </div>
+    <p class="diffnote" id="diffnote" aria-live="polite"></p>
 
     <p class="card__why" id="why"></p>
   </article>
