@@ -86,6 +86,32 @@ lower volume, which reads as a worse recording rather than as a quieter person.
 
 *Removed:* the gong. It stopped being an ending and became an event of its own.
 
+## The question itself
+
+**The prototype exists to answer one thing: is the map audible.** Given a theme
+and no name, can a listener tell whose it is? Everything else — the builder, the
+links, the accounts, the feed — waits on that answer.
+
+**It went unasked for five rounds, and that was my failure.** The work in those
+rounds was real — two tunes at once and a veil in the low mids would have
+spoiled any test — but each step followed so obviously from the last that
+nobody checked the direction. Kenny stopped it with "I am no longer sure what we
+are aiming at", which was the correct thing to say and should not have had to
+come from him.
+
+*How to apply:* clearing faults is preparation, not progress. When a round ends,
+say which question it moved, and if the answer is "none", say that instead.
+
+**Rolled characters, not the presets.** The twelve on the front page have been
+heard so many times that recognising one measures memory. A stranger cannot be
+remembered, and it also tests what the rules do rather than what was chosen for
+display.
+
+**The four sheets in a round differ in class and in race.** Otherwise a round
+can turn on two characters the rules could not possibly separate, and the score
+measures the dice. Alignment and the tags are left where they fall — they are
+meant to be audible too, and constraining them would flatter the result.
+
 ## How we work
 
 **Complaints are turned into numbers** (`metrics.js`), so a fix can be checked

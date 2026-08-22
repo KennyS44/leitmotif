@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leitmotif — blind test</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="head">
+  <div class="lang" role="group" aria-label="Language">
+    <button type="button" data-lang="en" aria-pressed="true">EN</button>
+    <button type="button" data-lang="ru" aria-pressed="false">RU</button>
+  </div>
+  <p class="head__kicker" id="kicker"></p>
+  <h1 class="head__title" id="title">Blind test</h1>
+  <p class="head__lede" id="lede"></p>
+</header>
+
+<main class="list">
+  <article class="card" id="quiz">
+    <p class="card__sheet" id="progress"></p>
+
+    <div class="card__actions">
+      <button class="btn--play" id="play" type="button"></button>
+      <span class="ready" id="ready" aria-live="polite"></span>
+    </div>
+
+    <div class="transport">
+      <input class="seek" id="seek" type="range" min="0" max="100" step="1" value="0"
+             aria-label="Position in the theme">
+      <p class="time"><span class="time__now">0:00</span> / <span class="time__total">0:00</span></p>
+    </div>
+
+    <h2 class="quiz__ask" id="ask"></h2>
+    <div class="options" id="options"></div>
+
+    <p class="verdict" id="verdict" aria-live="polite"></p>
+    <button id="next" type="button" hidden></button>
+  </article>
+
+  <article class="card" id="result" hidden>
+    <h2 class="card__name" id="score"></h2>
+    <p class="card__blurb" id="breakdown"></p>
+    <ul class="tags" id="log"></ul>
+    <div class="card__actions">
+      <button class="btn--play" id="again" type="button"></button>
+    </div>
+  </article>
+</main>
+
+<footer class="foot">
+  <p><a href="index.html" id="back"></a></p>
+  <p class="foot__fine" id="fine"></p>
+</footer>
+
+<script src="mapping.js"></script>
+<script src="music.js"></script>
+<script src="render.js"></script>
+<script src="player.js"></script>
+<script src="characters.js"></script>
+<script src="i18n.js"></script>
+<script src="labels.js"></script>
+<script src="blind.js"></script>
+</body>
+</html>

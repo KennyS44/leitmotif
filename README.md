@@ -22,6 +22,8 @@ only if the answer is yes.
 | `characters.js` | twelve presets, chosen to sit far apart |
 | `i18n.js` | Russian for the prototype; English is the default and the fallback |
 | `app.js` | the front page: play, stop, language switch, export to MP3 |
+| `labels.js` | which language the site is in, and how a character sheet is read out |
+| `blind.js` | the blind test: the one question this repository exists to answer |
 | `compare.js`, `variants.js` | the A/B workbench, and the versions it puts side by side |
 | `metrics.js` | recurring complaints turned into numbers. A test instrument — the site never loads it |
 | `DECISIONS.md` | what has been settled and why, including what was rejected |
@@ -101,6 +103,22 @@ letter instead of an essay.
 under the LGPL — see `vendor/lamejs-LICENSE.txt`. It is fetched only when
 somebody asks for a file, so the page itself carries no dependency. Nothing else
 in the project has one.
+
+## Answering the question
+
+`blind.html` is the test the question above deserves. A theme plays with no name
+on it and four sheets are offered; ten rounds; chance is two or three right.
+
+Two things make it a test rather than a demonstration. The characters are
+**rolled fresh, never the twelve presets** — those have been listened to so
+often that picking one out of a line-up would measure memory rather than
+mapping. And the four sheets in a round always **differ in class and in race**,
+so no round is decided by a coin toss between two characters the rules could not
+separate. Alignment and tags are left where the dice put them: they are supposed
+to be audible too, and rigging them would flatter the result.
+
+Everything else in this repository — every fix to the arrangement, every round
+on the A/B page — is worth exactly what this test says it is worth.
 
 ## Not here yet
 

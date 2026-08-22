@@ -134,6 +134,7 @@ const EN = {
     position: 'Position in the theme',
     /* the arrow is tied to the last word, or it wraps onto a line of its own */
     bench: 'A/B — two versions of one edit, side by side →',
+    blind: 'Blind test — can you tell whose theme is playing? →',
     footTitle: 'What is actually happening',
     foot: [
       'A theme is built from two things. The <strong>class</strong> supplies a <strong>motif</strong> — a handful of intervals that is stated, answered and brought back rather than re-invented every bar. The <strong>race</strong> supplies the <strong>metre and the bar of rhythm</strong>, drawn under each card above: how many beats there are, how they are subdivided, and whether the off-beats are pushed late. The melody, the bass and the drums all take their onsets from that one grid, so they sound like one band.',
@@ -156,18 +157,14 @@ const EN = {
             'flat fifth', 'natural sixth', 'flat seventh'],
 };
 
-/* Language is remembered, because nobody wants to pick it on every visit. */
-let lang = localStorage.getItem('leitmotif.lang') || 'en';
-const dict = () => (lang === 'ru' ? window.I18N.ru : EN);
+/* Which language, and how a sheet is read out, both live in labels.js — three
+   pages need them and only one of them can own the answer. */
+const Sheet = window.Sheet;
+const dict = () => Sheet.dict() || EN;
 
 const T = (key) => (dict().ui && dict().ui[key]) || EN.ui[key] || key;
 const W = (key) => (dict().why && dict().why[key]) || EN.why[key] || key;
-
-/* Labels live in mapping.js in English; the dictionary only overrides them. */
-function label(kind, key, fallback) {
-  const table = dict()[kind];
-  return (table && table[key]) || fallback || key;
-}
+const label = Sheet.label;
 
 /* English gets away with one plural; Russian needs three forms chosen by the
    last digit of the number. Languages without the forms just get the default. */
@@ -218,20 +215,7 @@ function why(p) {
   return bits.join(' · ');
 }
 
-function tagList(ch) {
-  const items = [];
-  (ch.traits || []).forEach((t) => TRAITS[t] && items.push(label('traits', t, TRAITS[t].label)));
-  (ch.looks || []).forEach((t) => LOOKS[t] && items.push(label('looks', t, LOOKS[t].label)));
-  return items.map((t) => `<li>${t}</li>`).join('');
-}
-
-function sheetLine(ch, p) {
-  const one = (k) => label('classes', k, CLASSES[k].label);
-  const cls = one(ch.cls) + (ch.second ? ` / ${one(ch.second)}` : '');
-  const oath = p.subLabel ? `, ${label('subclasses', ch.sub, p.subLabel)}` : '';
-  return `${label('races', ch.race, RACES[ch.race].label)} ${cls}${oath}`
-    + ` · ${label('alignments', ch.alignment, ALIGNMENTS[ch.alignment].label)}`;
-}
+const tagList = (ch) => Sheet.tags(ch).map((t) => `<li>${t}</li>`).join('');
 
 function cardFor(ch) {
   const p = characterToParams(ch);
@@ -240,7 +224,7 @@ function cardFor(ch) {
   card.className = 'card';
   card.innerHTML = `
     <h2 class="card__name">${shown.name}</h2>
-    <p class="card__sheet">${sheetLine(ch, p)}</p>
+    <p class="card__sheet">${Sheet.line(ch, p)}</p>
     ${shown.blurb ? `<p class="card__blurb">${shown.blurb}</p>` : ''}
     <ul class="tags">${tagList(ch)}</ul>
     <div class="card__actions">
@@ -274,7 +258,8 @@ function build() {
 
   document.getElementById('roll').textContent = T('roll');
   document.getElementById('bench-link').textContent = T('bench');
-  document.documentElement.lang = lang;
+  document.getElementById('blind-link').textContent = T('blind');
+  document.documentElement.lang = Sheet.lang;
   document.getElementById('kicker').innerHTML = T('kicker');
   document.getElementById('lede').innerHTML = T('lede');
   document.getElementById('note').innerHTML = T('note');
@@ -285,7 +270,7 @@ function build() {
       foot.map((para) => `<p>${para}</p>`).join('');
   }
   [...document.querySelectorAll('.lang button')].forEach((b) => {
-    b.setAttribute('aria-pressed', String(b.dataset.lang === lang));
+    b.setAttribute('aria-pressed', String(b.dataset.lang === Sheet.lang));
   });
 }
 
@@ -302,9 +287,8 @@ document.getElementById('roll').addEventListener('click', () => {
 
 document.querySelector('.lang').addEventListener('click', (e) => {
   const pick = e.target.closest('button');
-  if (!pick || pick.dataset.lang === lang) return;
-  lang = pick.dataset.lang;
-  localStorage.setItem('leitmotif.lang', lang);
+  if (!pick || pick.dataset.lang === Sheet.lang) return;
+  Sheet.set(pick.dataset.lang);
   build();
 });
 
