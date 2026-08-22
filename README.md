@@ -86,6 +86,15 @@ Nine tenths of what can break is decided in the score and shows up instantly.
 Paying for twelve audio renders to discover that a bar line moved was most of
 the cost of a round.
 
+Every invariant is asked twice: once of the twelve presets, once of two hundred
+seeded strangers. The presets are twelve chosen examples and hide things — the
+note-length floor cannot be made to fail on them at all, and the melody climbing
+out of hearing survived four hundred checks until a stranger sang it.
+
+`./dev.sh mutate` audits the suite itself: it breaks the code one specific way
+at a time and reports which assertions notice. Counting passing checks says
+nothing about whether any of them could fail.
+
 `metrics.js` turns the complaints that keep recurring — *several tunes at once*,
 *mechanical*, *ragged*, *warbling* — into numbers, so a fix can be checked
 before it is shown to anybody. A finding that is real but not yet decided is

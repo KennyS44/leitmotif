@@ -9,6 +9,7 @@
 #   ./dev.sh stop           stop it
 #   ./dev.sh check          the fast checks: scores only, no audio (seconds)
 #   ./dev.sh check --full   everything, audio included (minutes)
+#   ./dev.sh mutate         break the code on purpose, see which checks notice
 #   ./dev.sh publish "msg"  commit and push to GitHub Pages
 #
 # Port 20303 is inside the block this account owns (20300-20319); 20302 belongs
@@ -62,6 +63,7 @@ case "${1:-check}" in
   serve) up ;;
   stop)  down ;;
   check) up; shift || true; node test.js "$@" ;;
+  mutate) up; node mutate.js ;;
   publish)
     up >/dev/null; node test.js --full
     git add -A

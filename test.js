@@ -24,8 +24,20 @@ const FULL = process.argv.includes('--full');
 const fail = [];
 const ok = [];
 const open = [];
+const grouped = [];
 function check(name, cond, detail) {
   (cond ? ok : fail).push(detail ? `${name} — ${detail}` : name);
+  /* Most assertions are made once per character, so the run used to print four
+     hundred lines to say forty-seven things and a single failure had to be
+     found among them. Passes are collapsed to one line per assertion; failures
+     keep every word, because that is the line anyone actually reads. */
+  const at = name.indexOf(': ');
+  grouped.push({
+    group: at > 0 ? name.slice(at + 2) : name,
+    subject: at > 0 ? name.slice(0, at) : null,
+    ok: !!cond,
+    detail,
+  });
 }
 
 /* A finding that is real and measured but not yet decided. It is neither hidden
@@ -246,28 +258,87 @@ function watch(name, held, detail) {
     }
   });
 
-  /* The twelve presets are twelve chosen examples and will not find this: the
-     melody climbing out of hearing happened to strangers, and was heard only
-     because the blind test plays strangers. Two hundred rolls cost milliseconds
-     and cover what a hand-picked set cannot. */
+  /* --- the same questions, asked of strangers -------------------------
+   *
+   * The twelve presets are twelve chosen examples, and the audit kept finding
+   * the same thing three different ways: the faults live among the characters
+   * nobody picked. The melody climbing out of hearing survived four hundred
+   * checks. The note-length floor cannot be made to fail on the presets at all
+   * — set it to a hundredth of a second and every one of them still passes,
+   * because none of them ever reaches it. Two of the complaint measures are
+   * already breached by strangers while the presets sit well inside.
+   *
+   * Two hundred rolls cost milliseconds. Every invariant that is about the
+   * output rather than about a particular character is asked here too, of the
+   * worst roll rather than of a favourite. */
   const strangers = await page.evaluate(() => {
-    let top = -Infinity;
-    let bottom = Infinity;
-    let worst = null;
-    for (let i = 0; i < 200; i += 1) {
-      const ch = window.rollCharacter();
-      const s = window.Leitmotif.composeScore(window.Leitmotif.characterToParams(ch));
-      const hi = Math.max(...s.tracks.lead.map((n) => n.midi));
-      const lo = Math.min(...s.tracks.lead.map((n) => n.midi));
-      if (hi > top) { top = hi; worst = `${ch.race} ${ch.cls}, ${(ch.looks || []).join('+')}`; }
-      if (lo < bottom) bottom = lo;
+    /* The same two hundred strangers every run.
+     *
+     * Rolling them freshly would make the suite flaky: a bound set from what
+     * random characters happen to reach is a bound an unlucky run can cross,
+     * and a check that goes red every so often for no reason stops being read
+     * at all. Seeding the dice keeps the population fixed, so a number moving
+     * means the code moved. The seed is arbitrary and can be changed to sweep a
+     * different two hundred — deliberately, and with the numbers re-read. */
+    const seeded = window.Music.rng(0x5eed1e55);
+    const realRandom = Math.random;
+    Math.random = seeded;
+
+    const worst = {
+      top: -Infinity, bottom: Infinity, shortest: Infinity, span: 0,
+      shortTheme: Infinity, longTheme: 0, fewestNotes: Infinity,
+      hole: 0, pad: 0, machine: 0,
+    };
+    const who = {};
+    const keep = (k, v, ch, better) => {
+      if (better(v, worst[k])) { worst[k] = v; who[k] = `${ch.race} ${ch.cls}`; }
+    };
+    const hi = (v, w) => v > w;
+    const lo = (v, w) => v < w;
+    try {
+      for (let i = 0; i < 200; i += 1) {
+        const ch = window.rollCharacter();
+        const p = window.Leitmotif.characterToParams(ch);
+        const s = window.Leitmotif.composeScore(p);
+        const mid = s.tracks.lead.map((n) => n.midi);
+        const sung = s.tracks.lead.filter((n) => !n.grace);
+        keep('top', Math.max(...mid), ch, hi);
+        keep('bottom', Math.min(...mid), ch, lo);
+        keep('span', Math.max(...mid) - Math.min(...mid), ch, hi);
+        keep('shortest', Math.min(...sung.map((n) => n.dur)), ch, lo);
+        keep('shortTheme', s.duration, ch, lo);
+        keep('longTheme', s.duration, ch, hi);
+        keep('fewestNotes', s.tracks.lead.length, ch, lo);
+        const f = window.Metrics.report(s, p);
+        keep('hole', f.hole, ch, hi);
+        keep('pad', f.apartPad, ch, hi);
+        keep('machine', f.machine, ch, hi);
+      }
+    } finally {
+      Math.random = realRandom;
     }
-    return { top, bottom, worst };
+    return { worst, who };
   });
-  check('no stranger squeaks', strangers.top <= 96,
-    `highest of 200 rolls is ${strangers.top} (${strangers.worst})`);
-  check('no stranger disappears downwards', strangers.bottom >= 36,
-    `lowest of 200 rolls is ${strangers.bottom}`);
+  const st = strangers.worst;
+  const at = (k) => strangers.who[k];
+  check('no stranger squeaks', st.top <= 96, `highest of 200 rolls is ${st.top} (${at('top')})`);
+  check('no stranger disappears downwards', st.bottom >= 36, `lowest is ${st.bottom}`);
+  check('no stranger leaps out of a singable range', st.span <= 36,
+    `widest is ${st.span} semitones (${at('span')})`);
+  check('no stranger plays a stab', st.shortest >= 0.16,
+    `shortest is ${st.shortest.toFixed(3)}s (${at('shortest')})`);
+  check('no stranger runs short or long', st.shortTheme >= 25 && st.longTheme <= 65,
+    `${st.shortTheme.toFixed(1)}s … ${st.longTheme.toFixed(1)}s`);
+  check('no stranger has too few notes', st.fewestNotes > 20,
+    `fewest is ${st.fewestNotes} (${at('fewestNotes')})`);
+  check('no stranger is metronomic', st.machine <= 0.85,
+    `worst is ${st.machine} (${at('machine')})`);
+  /* Two bounds the presets meet and strangers do not. Recorded at today's worst
+     so they cannot drift further while they wait for a decision. */
+  watch('strangers: the melody is not torn', st.hole <= 0.6,
+    `worst of 200 rolls is ${st.hole} (${at('hole')}), past the 0.45 the presets hold to`);
+  watch('strangers: the pad stays a floor', st.pad <= 0.95,
+    `worst of 200 rolls is ${st.pad} (${at('pad')}), past the 0.7 the presets hold to`);
 
   const cells = new Set(structure.map((s) => s.cell));
   check('races bring different rhythms', cells.size >= 5, `${cells.size} distinct cells`);
@@ -462,11 +533,13 @@ function watch(name, held, detail) {
   });
 
   if (FULL) {
-    /* named every run, so the crowded end of the set stays in view instead of
-       passing quietly inside a bound wide enough to hold it */
+    /* Named every run so the crowded end of the set stays in view — but as a
+       line of output, not as an assertion. It was written as `check(..., true,
+       ...)`, which is a print wearing a check's clothes: it could never fail,
+       and it inflated the count by one while guarding nothing. */
     const byMud = [...audio].sort((x, y) => y.mud - x.mud);
-    check('the low mids are known', true,
-      `most crowded ${byMud[0].name} ${byMud[0].mud}, ${byMud[1].name} ${byMud[1].mud};`
+    console.log(`  note  low mids: most crowded ${byMud[0].name} ${byMud[0].mud},`
+      + ` ${byMud[1].name} ${byMud[1].mud};`
       + ` clearest ${byMud[byMud.length - 1].name} ${byMud[byMud.length - 1].mud}`);
 
     const brights = audio.map((a) => a.bright);
@@ -586,10 +659,29 @@ function watch(name, held, detail) {
   console.table(scores);
   console.table(felt);
   if (FULL) console.table(audio);
-  ok.forEach((n) => console.log('  ok   ', n));
+
+  /* one line per assertion, not per assertion per character */
+  const order = [];
+  const by = new Map();
+  grouped.forEach((g) => {
+    if (!by.has(g.group)) { by.set(g.group, []); order.push(g.group); }
+    by.get(g.group).push(g);
+  });
+  order.forEach((name) => {
+    const runs = by.get(name);
+    const bad = runs.filter((r) => !r.ok);
+    if (!bad.length) {
+      const only = runs.length === 1 && runs[0].detail ? ` — ${runs[0].detail}` : '';
+      console.log(`  ok    ${name}${runs.length > 1 ? ` — ${runs.length}/${runs.length}` : ''}${only}`);
+      return;
+    }
+    bad.forEach((r) => console.log(`  FAIL  ${r.subject ? `${r.subject}: ` : ''}${name}`
+      + `${r.detail ? ` — ${r.detail}` : ''}`));
+  });
   open.forEach((n) => console.log('  open ', n));
-  fail.forEach((n) => console.log('  FAIL ', n));
-  console.log(`\n${ok.length} passed, ${fail.length} failed`
+
+  console.log(`\n${order.length} assertions over ${grouped.length} runs`
+    + `, ${fail.length} failed`
     + `${open.length ? `, ${open.length} open` : ''}`
     + `${FULL ? '' : ' — score only, run --full before publishing'}`);
   process.exit(fail.length ? 1 : 0);

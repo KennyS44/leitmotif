@@ -183,6 +183,30 @@ listened to. The timeline now carries a map of where the versions part company,
 measured after fitting out any difference in level (a change of loudness is not
 a change of music), and the head is parked just before it.
 
+**A suite is audited by breaking things, not by counting them.** `./dev.sh
+mutate` breaks the code one specific way at a time, runs the checks against the
+broken build and records which assertions go red. A check nobody can make fail
+is worse than no check, because it is counted.
+
+What the first audit found:
+
+- one assertion written as `check(name, true, detail)` — a print wearing a
+  check's clothes. Removed.
+- four deliberate breaks that nothing noticed at all.
+- **the root cause of all four, and of the squeaking melody before them: the
+  checks were aimed at twelve chosen characters.** Set the note-length floor to
+  a hundredth of a second and every preset still passes, because none of them
+  ever reaches it. The invariants are now asked of two hundred strangers as
+  well, at the worst roll rather than at a favourite — and every break is caught.
+- 432 passing lines were 47 distinct assertions repeated. Passes are collapsed
+  to one line each now; failures keep every word. The count says
+  "N assertions over M runs" rather than pretending to be N × M.
+
+**The strangers are seeded, not rolled fresh.** A bound set from what random
+characters happen to reach is a bound an unlucky run will cross, and a check
+that reddens now and then for no reason stops being read. The same two hundred
+every time means a number that moves is the code moving.
+
 **Degrees are answered on the A/B page, not guessed.** "Soften it, but only a
 little" costs a whole round if I pick the number. Two or three amounts on one
 timeline, and the answer is a letter.
