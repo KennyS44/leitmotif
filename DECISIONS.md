@@ -156,8 +156,26 @@ measured every run as `mud`.
 won removed **two** parts, the pad and the race's instrument, so it did not say
 which. The current round changes one at a time.
 
-*Prediction to be checked by ear, made before listening:* the pad is the culprit
-and the race's instrument is not — removing the pad drops the crowding by ~0.045
-on Ilsabet and Marrow, removing the race instrument by ~0.003. On Ashen Vell,
-whose pad sits high, removing the pad makes it slightly *worse*, so the answer
-there should differ. If the ear disagrees, the measure is wrong and goes.
+*Prediction made before listening, and confirmed:* the pad is the culprit and
+the race's instrument is not. The measure earned its keep — it named the guilty
+part before anyone listened, and the ear agreed.
+
+**What the pad was carrying, and why it cannot simply go.** Asked what breaks
+without it, the checks answered:
+
+- the final chord drops from four-to-seven parts to **two**, on every character.
+  The pad *is* the chord in "the ending lands together".
+- three characters stop growing at all, 3 > 3 > 3 > 3, because the pad was the
+  only part entering at the build phrase.
+
+So the fault is not that the pad exists. It is that it sounds *all the way
+through*, in the worst band to sound all the way through in — and this project
+already holds that nobody plays all the way through. The pad was the one part
+that never left.
+
+*Measured, before the next listen:* sounding the pad only at phrase starts and
+on the final chord recovers most of the cleanliness of removing it (Ilsabet
+0.571 → 0.539 against 0.523 with no pad at all) while the ending and the growth
+stay exactly as they were. Lifting the pad up out of the band instead is
+unreliable — it helps on Ilsabet, does nothing on Nymeria and is *worse* than
+today on Marrow.

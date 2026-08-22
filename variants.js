@@ -14,60 +14,87 @@
  * page: without something to beat, "better" has no meaning.
  *
  * `aid: true` marks a version that is not a candidate — a listening aid, or a
- * deliberate extreme. It is kept out of the difference map, which is drawn to
- * show where the real candidates part company.
+ * deliberate extreme. It is kept out of the difference map.
  *
  * `on` names the character the page opens with. Notes are in Russian on
  * purpose: this page is a workbench, not the product.
  *
  * ---
  *
- * Last round asked whether the background could be heard at all, and the answer
- * was better than a yes: without it the music was cleaner. Measurement agrees
- * and says where — the pad adds about a decibel between 240 and 480 Hz and
- * nothing anywhere else, on every character measured. That band is where sound
- * piles up without being heard as anything: too low to carry a tune, too high
- * to be the bottom. Filling it does not add a part, it adds a veil.
+ * Settled by ear, twice: the pad is what makes the music less clean, and the
+ * race's instrument is not. Measurement had predicted exactly that, and now
+ * says why — the pad adds about a decibel between 240 and 480 Hz and nothing
+ * anywhere else. That band is where sound piles up without being heard as
+ * anything, so a part that sits in it continuously is a veil rather than a
+ * voice.
  *
- * But that round had a flaw of mine in it: the version that won removed *two*
- * parts, the pad and the race's instrument, so it does not say which of them
- * was in the way. Both are plausible and the cures are opposite — one is a
- * sustained chord bed, the other eleven notes in fifty seconds.
+ * But the checks then named what the pad was carrying, and simply deleting it
+ * is not available:
  *
- * So this round changes one thing at a time. It is the same question asked
- * properly.
+ *   - the final chord falls from four to seven parts down to two, on every
+ *     character. The pad *is* the chord in "the ending lands together".
+ *   - three characters stop growing at all — 3 > 3 > 3 > 3 — because the pad
+ *     was the only part entering at the build phrase.
+ *
+ * So the fault is not that the pad exists. It is that it sounds all the way
+ * through, in the worst band to sound all the way through in. The project
+ * already believes parts should enter and leave; the pad is the one that never
+ * does. Two ways out, and B stays on the page as the thing they have to beat.
  */
 
-const drop = (...parts) => ({
-  score(s) { parts.forEach((k) => { s.tracks[k].length = 0; }); },
-});
+/* keep the pad only where the arrangement actually needs a chord: the start of
+   each phrase, and the final chord */
+const asEvents = {
+  score(s) {
+    const phrase = s.barsPerPhrase * s.barDur;
+    s.tracks.pad = s.tracks.pad.filter((n) => {
+      const intoPhrase = n.t - Math.round(n.t / phrase) * phrase;
+      return Math.abs(intoPhrase) < 0.02 || Math.abs(n.t - s.endAt) < 0.02;
+    });
+  },
+};
+
+/* lift the pad as far towards the melody as the stacking rule allows — out of
+   the veil band, still underneath the tune */
+const lifted = {
+  score(s) {
+    if (!s.tracks.pad.length || !s.tracks.lead.length) return;
+    const leadBottom = Math.min(...s.tracks.lead.map((n) => n.midi));
+    const padTop = Math.max(...s.tracks.pad.map((n) => n.midi));
+    const shift = Math.min(12, leadBottom - 1 - padTop);
+    if (shift <= 0) return;
+    s.tracks.pad.forEach((n) => { n.midi += shift; });
+  },
+};
 
 window.VARIANTS = {
 
-  /* the character the finding was heard on */
   on: 'Dame Ilsabet Cross',
 
   list: [
     { id: 'now',
       label: 'A — как сейчас',
-      note: 'Фон и расовый инструмент оба на месте. Версия с главной страницы.' },
+      note: 'Фон звучит всю тему. Версия с главной страницы.' },
 
     { id: 'noPad',
       label: 'B — без фона',
-      note: 'Убран только фон — выдержанные аккорды. Расовый инструмент '
-          + 'остался. Если чище стало от этого, виноват фон.',
-      ...drop('pad') },
+      note: 'Твой прошлый выбор. Остаётся на странице как то, что новым '
+          + 'версиям надо превзойти — но ценой: финальный аккорд здесь '
+          + 'берут всего две партии вместо семи.',
+      score(s) { s.tracks.pad.length = 0; } },
 
-    { id: 'noHue',
-      label: 'C — без расового',
-      note: 'Убран только расовый инструмент. Фон остался. Если чище стало '
-          + 'от этого, виноват не фон, а он.',
-      ...drop('hue') },
+    { id: 'events',
+      label: 'C — фон только на опорах',
+      note: 'Фон звучит на начале каждой фразы и на финальном аккорде, '
+          + 'а между ними молчит. Пелена не успевает накопиться, но '
+          + 'концовка и нарастание остаются на месте.',
+      ...asEvents },
 
-    { id: 'neither',
-      label: 'D — без обоих',
-      note: 'То, что ты выбрал в прошлый раз. Здесь — для сверки: если D '
-          + 'чище, чем лучший из B и C, значит мешают оба.',
-      ...drop('pad', 'hue') },
+    { id: 'lifted',
+      label: 'D — фон поднят под мелодию',
+      note: 'Фон звучит так же непрерывно, но переставлен вверх — из мутной '
+          + 'полосы, ближе к мелодии, всё ещё под ней. Проверка того, что '
+          + 'мешала именно полоса, а не сама непрерывность.',
+      ...lifted },
   ],
 };
