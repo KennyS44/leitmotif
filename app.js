@@ -132,6 +132,8 @@ const EN = {
     roll: 'Roll a stranger',
     rendering: 'Rendering…',
     position: 'Position in the theme',
+    /* the arrow is tied to the last word, or it wraps onto a line of its own */
+    bench: 'A/B — two versions of one edit, side by side →',
     footTitle: 'What is actually happening',
     foot: [
       'A theme is built from two things. The <strong>class</strong> supplies a <strong>motif</strong> — a handful of intervals that is stated, answered and brought back rather than re-invented every bar. The <strong>race</strong> supplies the <strong>metre and the bar of rhythm</strong>, drawn under each card above: how many beats there are, how they are subdivided, and whether the off-beats are pushed late. The melody, the bass and the drums all take their onsets from that one grid, so they sound like one band.',
@@ -271,6 +273,7 @@ function build() {
   window.PRESETS.forEach((ch) => list.appendChild(cardFor(ch)));
 
   document.getElementById('roll').textContent = T('roll');
+  document.getElementById('bench-link').textContent = T('bench');
   document.documentElement.lang = lang;
   document.getElementById('kicker').innerHTML = T('kicker');
   document.getElementById('lede').innerHTML = T('lede');

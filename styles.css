@@ -288,6 +288,20 @@ button:disabled:hover { border-color: var(--line); color: var(--text); }
 }
 .foot__fine a { color: var(--accent); }
 
+/* the way in to the workbench. A link, not a button: it leaves the page, and
+   the only thing on the header that leaves the page should not look like the
+   things that play a theme. 44px of height so a thumb can hit it. */
+.head__bench {
+  margin: 12px 0 0;
+  font-size: 14px;
+}
+.head__bench a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--accent);
+}
+
 /* ------------------------------------------------------- the A/B workbench */
 
 .pick {
