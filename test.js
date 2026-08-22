@@ -283,6 +283,29 @@ function check(name, cond, detail) {
     Math.max(...brights) - Math.min(...brights) > 200,
     `${Math.min(...brights)} … ${Math.max(...brights)}`);
 
+  /* The performance layer adds a few milliseconds and a few cents to every
+     note, so it is worth proving the untidiness is composed rather than random.
+     Bit-exactness is not available — the limiter accumulates differently across
+     a minute of audio — but the difference has to stay far below hearing. */
+  const steady = await page.evaluate(async () => {
+    const ch = window.PRESETS[0];
+    const p = window.Leitmotif.characterToParams(ch);
+    const s = window.Leitmotif.composeScore(p);
+    const rate = 44100;
+    const render = async () => {
+      const c = new OfflineAudioContext(2, Math.ceil(rate * s.duration), rate);
+      window.Music.renderScore(c, s, p, 0);
+      return (await c.startRendering()).getChannelData(0);
+    };
+    const x = await render();
+    const y = await render();
+    let worst = 0;
+    for (let i = 0; i < x.length; i += 1) worst = Math.max(worst, Math.abs(x[i] - y[i]));
+    return +worst.toFixed(6);
+  });
+  check('the same sheet performs the same way', steady < 0.001,
+    `worst sample differs by ${steady}`);
+
   /* --- the ending ---------------------------------------------------- */
   const endings = await page.evaluate(() => window.PRESETS.map((ch) => {
     const p = window.Leitmotif.characterToParams(ch);

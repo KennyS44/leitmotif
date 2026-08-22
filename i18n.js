@@ -32,11 +32,11 @@ window.I18N = {
     classes: {
       fighter: 'Воин', paladin: 'Паладин', barbarian: 'Варвар', cleric: 'Жрец',
       druid: 'Друид', ranger: 'Следопыт', rogue: 'Плут', bard: 'Бард',
-      monk: 'Монах', wizard: 'Волшебник', sorcerer: 'Колдун',
-      warlock: 'Чернокнижник', artificer: 'Изобретатель',
+      monk: 'Монах', wizard: 'Волшебник', sorcerer: 'Чародей',
+      warlock: 'Колдун', artificer: 'Изобретатель',
     },
     races: {
-      human: 'Человек', elf: 'Эльф', dwarf: 'Дворф', halfling: 'Полурослик',
+      human: 'Человек', elf: 'Эльф', dwarf: 'Дварф', halfling: 'Полурослик',
       gnome: 'Гном', tiefling: 'Тифлинг', dragonborn: 'Драконорождённый',
       orc: 'Орк', halforc: 'Полуорк', halfelf: 'Полуэльф', tabaxi: 'Табакси',
       goliath: 'Голиаф', aasimar: 'Аасимар',

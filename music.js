@@ -417,10 +417,10 @@ function composeScore(p) {
   });
   tracks.lead.push({ t: endAt, midi: leadCentre + tonic, dur: hold, vel: Math.min(1, p.dyn * 1.15) });
   if (p.hue) tracks.hue.push({ t: endAt, midi: padRoot + 12 + tonic, dur: hold, vel: 0.42 });
-  if (p.perc) {
-    if (!abrupt) tracks.perc.push({ t: endAt, kind: 'gong', vel: 0.55 + p.dyn * 0.25 });
-    tracks.perc.push({ t: endAt, kind: 'kick', vel: 0.60 + p.dyn * 0.25 });
-  }
+  /* No gong. A long metallic wash at the end belongs to a different kind of
+     music and read as an extension stuck on rather than as this piece
+     finishing. The band landing together on the tonic is the ending. */
+  if (p.perc) tracks.perc.push({ t: endAt, kind: 'kick', vel: 0.58 + p.dyn * 0.22 });
 
   /* an abrupt ending gets almost no room afterwards — the silence is the point */
   const duration = endAt + hold + (abrupt ? 0.5 : 1.6);
@@ -552,13 +552,18 @@ function detuneOsc(ctx, type, freq, cents, t, stop) {
 /* Each voice is a tiny patch. They are deliberately plain — the prototype is
    testing whether the mapping is audible, not whether the samples are pretty. */
 /* how much of a voice's detune survives, by note length */
-const spread = (dur) => (dur > 1.2 ? 0.45 : (dur > 0.6 ? 0.7 : 1));
+const spread = (dur) => (dur > 1.2 ? 0.40 : (dur > 0.6 ? 0.65 : 0.9));
+
+/* Roughness reads much stronger than the number suggests, so the number is
+   pulled back before anything uses it. */
+const grit = (rough) => rough * 0.55;
 
 function playNote(ctx, dest, voice, note, p) {
   const t = note.t;
-  const f = freqOf(note.midi);
+  /* a couple of cents off true, the way a real player is */
+  const f = freqOf(note.midi) * Math.pow(2, (note.cents || 0) / 1200);
   const vel = Math.max(0.02, note.vel);
-  const rough = p.rough;
+  const rough = grit(p.rough);
   const atk = p.attack;
   const out = ctx.createGain();
   out.connect(dest);
@@ -630,15 +635,24 @@ function playNote(ctx, dest, voice, note, p) {
       break;
     }
     case 'air': {
+      /* This used to be a loop of noise through a band-pass, and looping noise
+         under a long chord is exactly the restless hiss that reads as rubbish
+         rather than as a pad. It is now three quiet tones a hair apart, with
+         only a breath of noise on top. */
       const stop = t + note.dur + 0.8;
       const filt = ctx.createBiquadFilter();
-      filt.type = 'bandpass'; filt.frequency.value = f * 2; filt.Q.value = 3.5;
+      filt.type = 'lowpass'; filt.frequency.value = 1800; filt.Q.value = 0.6;
       filt.connect(out);
-      const src = ctx.createBufferSource();
-      src.buffer = noiseBuffer(ctx); src.loop = true;
-      src.connect(filt); src.start(t); src.stop(stop);
-      detuneOsc(ctx, 'sine', f, 0, t, stop).connect(out);
-      env(ctx, out, t, note.dur, vel * 0.16, 0.55 * atk, 0.7);
+      [-3, 0, 4].forEach((c) => detuneOsc(ctx, 'triangle', f, c, t, stop).connect(filt));
+      detuneOsc(ctx, 'sine', f * 2, 0, t, stop).connect(filt);
+      const air = ctx.createBufferSource();
+      air.buffer = noiseBuffer(ctx); air.loop = true;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass'; bp.frequency.value = f * 3; bp.Q.value = 2;
+      const ag = ctx.createGain(); ag.gain.value = vel * 0.02;
+      air.connect(bp); bp.connect(ag); ag.connect(out);
+      air.start(t); air.stop(stop);
+      env(ctx, out, t, note.dur, vel * 0.20, 0.55 * atk, 0.7);
       break;
     }
     case 'dark':
@@ -703,7 +717,7 @@ function playNote(ctx, dest, voice, note, p) {
       const bg = ctx.createGain(); bg.gain.value = vel * (0.05 + rough * 0.10);
       breath.connect(bp); bp.connect(bg); bg.connect(out);
       breath.start(t); breath.stop(stop);
-      env(ctx, out, t, note.dur, vel * 0.30, 0.09 * atk, 0.18);
+      env(ctx, out, t, note.dur, vel * 0.30, 0.09 * atk, 0.30);
       break;
     }
     case 'harp': {
@@ -777,7 +791,7 @@ function playNote(ctx, dest, voice, note, p) {
       const bg = ctx.createGain(); bg.gain.value = vel * 0.16;
       breath.connect(bp); bp.connect(bg); bg.connect(out);
       breath.start(t); breath.stop(stop);
-      env(ctx, out, t, note.dur, vel * 0.26, 0.14 * atk, 0.22);
+      env(ctx, out, t, note.dur, vel * 0.26, 0.14 * atk, 0.34);
       break;
     }
     case 'pulse': {
@@ -785,14 +799,15 @@ function playNote(ctx, dest, voice, note, p) {
          square wave with a moving filter is a machine, not a minstrel */
       const stop = t + note.dur + 0.2;
       const filt = ctx.createBiquadFilter();
-      filt.type = 'lowpass'; filt.Q.value = 6;
-      filt.frequency.setValueAtTime(400 + 2600 * vel, t);
-      filt.frequency.exponentialRampToValueAtTime(500, t + note.dur + 0.15);
+      filt.type = 'lowpass'; filt.Q.value = 2.4;
+      filt.frequency.setValueAtTime(380 + 2000 * vel, t);
+      filt.frequency.exponentialRampToValueAtTime(600, t + note.dur + 0.2);
       filt.connect(out);
-      detuneOsc(ctx, 'square', f, -5, t, stop).connect(filt);
-      detuneOsc(ctx, 'square', f, 6, t, stop).connect(filt);
+      /* one square for the machine, one triangle for the hand holding it */
+      detuneOsc(ctx, 'square', f, -4, t, stop).connect(filt);
+      detuneOsc(ctx, 'triangle', f, 5, t, stop).connect(filt);
       detuneOsc(ctx, 'sine', f / 2, 0, t, stop).connect(filt);
-      env(ctx, out, t, note.dur, vel * 0.20, 0.01 * atk, 0.10);
+      env(ctx, out, t, note.dur, vel * 0.21, 0.035 * atk, 0.16);
       break;
     }
     case 'glass': {
@@ -848,8 +863,6 @@ function playHit(ctx, dest, hit) {
     case 'wood':   noise(2500, 'bandpass', 9.0, 0.05, 0.30); break;
     case 'tick':   noise(5200, 'bandpass', 12.0, 0.03, 0.26); break;
     case 'frame':  noise(420, 'lowpass', 1.0, 0.24, 0.30); thump(110, 74, 0.22, 0.30); break;
-    /* the closing stroke: a long metallic wash under the final chord */
-    case 'gong':   noise(1100, 'bandpass', 0.5, 2.6, 0.20); thump(90, 58, 1.4, 0.34); break;
     default: break;
   }
 }
@@ -922,7 +935,33 @@ function renderScore(ctx, score, p, startAt) {
   percWet.gain.value = 0.22;                /* dry drums, so they stay tight */
   percBus.connect(percWet); percWet.connect(wet);
 
-  const shift = (n) => ({ ...n, t: n.t + t0 });
+  /* THE PERFORMANCE LAYER.
+   *
+   * Up to here the score is exact: every note begins on its slot, at the level
+   * the map asked for, at concert pitch. Exactness is the whole reason it
+   * sounds like a machine — no player alive puts two notes down at precisely
+   * the same distance twice, and the ear reads that precision as artificial
+   * long before it can say why.
+   *
+   * So the last thing that happens before the sound is made is a small,
+   * deliberate mess: a few milliseconds either side of the beat, a few percent
+   * either side of the level, a couple of cents either side of the pitch. Drawn
+   * from the character's own seed, so the same sheet still plays the same way
+   * everywhere — the untidiness is composed, not random.
+   */
+  const human = rng((p.seed ^ 0x632be59b) >>> 0);
+  const wobble = (n) => {
+    const late = (human() - 0.5) * 0.016;
+    return {
+      ...n,
+      /* a grace note before the first beat, nudged earlier still, can land
+         before the start of an offline render, where time cannot be negative */
+      t: Math.max(0, n.t + t0 + late),
+      vel: n.vel === undefined ? n.vel : n.vel * (0.93 + human() * 0.14),
+      cents: (human() - 0.5) * 5,
+    };
+  };
+  const shift = wobble;
   score.tracks.lead.forEach((n) => playNote(ctx, leadBus, p.lead, shift(n), p));
   score.tracks.counter.forEach((n) => playNote(ctx, counterBus, p.counter || p.lead, shift(n), p));
   score.tracks.hue.forEach((n) => playNote(ctx, hueBus, p.hue || 'harp', shift(n), p));

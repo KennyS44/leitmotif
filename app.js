@@ -61,7 +61,30 @@ async function renderOffline(ch) {
   const OfflineCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
   const ctx = new OfflineCtx(2, Math.ceil(rate * score.duration), rate);
   renderScore(ctx, score, p, 0);
-  return ctx.startRendering();
+  const buffer = await ctx.startRendering();
+  return levelled(buffer);
+}
+
+/* Every theme leaves at the same height. A quiet character should sound quiet
+   in its own shape — soft attacks, a thinner band — not by arriving at a lower
+   volume than the file before it, which just reads as a worse recording. */
+function levelled(buffer) {
+  let peak = 0;
+  for (let c = 0; c < buffer.numberOfChannels; c += 1) {
+    const d = buffer.getChannelData(c);
+    for (let i = 0; i < d.length; i += 1) {
+      const v = Math.abs(d[i]);
+      if (v > peak) peak = v;
+    }
+  }
+  if (peak < 0.0001) return buffer;
+  const gain = Math.min(4, 0.89 / peak);
+  if (Math.abs(gain - 1) < 0.02) return buffer;
+  for (let c = 0; c < buffer.numberOfChannels; c += 1) {
+    const d = buffer.getChannelData(c);
+    for (let i = 0; i < d.length; i += 1) d[i] *= gain;
+  }
+  return buffer;
 }
 
 /* The encoder is 156 KB, so it is fetched the first time somebody actually asks
