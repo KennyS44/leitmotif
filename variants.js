@@ -13,52 +13,69 @@
  * and nothing else. The first entry is always the version now on the front
  * page: without something to beat, "better" has no meaning.
  *
- * `on` names the character the page opens with — the one where the question
- * actually arises. Notes are in Russian on purpose: this page is a workbench,
- * not the product.
+ * `aid: true` marks a version that is not a candidate — a listening aid, or a
+ * deliberate extreme. It is kept out of the difference map, which is drawn to
+ * show where the real candidates part company.
  *
- * Settled 2026-08-22: the second class answers in the lead's own instrument.
- * Its own timbre, even quietened, was still heard as a second tune. That is now
- * on the front page and is no longer a question.
+ * `on` names the character the page opens with. Notes are in Russian on
+ * purpose: this page is a workbench, not the product.
  *
- * This round's question: how much louder the background should be. Kenny hears
- * it, but has to listen for it. The pad and the race's instrument sit about 6dB
- * under the melody; these raise both together. Only the amount changes between
- * the versions, so the answer is one letter.
+ * ---
+ *
+ * This round is a calibration, not a proposal.
+ *
+ * Asked for the background "a little louder", I offered +2, +4 and +6 dB and
+ * Kenny heard no difference at all — including at +6. So I measured what the
+ * background is worth in the mix: turning it off *completely* changes the audio
+ * by about 9 dB, and +6 dB changes it by about 11. The two edits are the same
+ * size. Something that far apart in intent and that close in effect means level
+ * is probably the wrong knob, and no amount of turning it will help.
+ *
+ * So this set does not ask "how much". It asks whether the knob does anything
+ * at all: silence against a deliberate excess, with the part on its own first
+ * so there is no doubt what to listen for.
  */
 
-const lift = (db) => (p) => {
-  const k = Math.pow(10, db / 20);
+const gain = (db) => (p) => {
+  const k = db === null ? 0 : Math.pow(10, db / 20);
   p.blend.pad.gain *= k;
   p.blend.hue.gain *= k;
 };
 
 window.VARIANTS = {
 
-  /* Dame Ilsabet has the busiest pad of the twelve and a race instrument that
-     is not the pad doubled, so both halves of the question are audible on her. */
+  /* Dame Ilsabet has the busiest pad of the twelve — 60 notes — so if the
+     background is inaudible anywhere, it is inaudible here. */
   on: 'Dame Ilsabet Cross',
 
   list: [
     { id: 'now',
       label: 'A — как сейчас',
-      note: 'Фон и расовый инструмент примерно на 6 дБ ниже мелодии. '
-          + 'Версия с главной страницы.' },
+      note: 'Версия с главной страницы. Фон и расовый инструмент примерно '
+          + 'на 6 дБ ниже мелодии.' },
 
-    { id: 'up2',
-      label: 'B — +2 дБ',
-      note: 'Едва заметная прибавка. Если разницы с A почти нет — значит мало.',
-      params: lift(2) },
+    { id: 'off',
+      label: 'B — фона нет совсем',
+      note: 'Ноль. Не предложение, а нижняя точка отсчёта: если A и B звучат '
+          + 'одинаково, то фон сейчас не делает ничего, и прибавлять его '
+          + 'бессмысленно — надо менять не громкость.',
+      params: gain(null) },
 
-    { id: 'up4',
-      label: 'C — +4 дБ',
-      note: 'Фон выходит из-за мелодии, но остаётся под ней.',
-      params: lift(4) },
+    { id: 'loud',
+      label: 'C — фон +12 дБ',
+      note: 'Заведомо перебор, вчетверо громче нынешнего. Верхняя точка '
+          + 'отсчёта: если и C не отличается от A, значит фон замаскирован '
+          + 'мелодией и его не слышно ни на какой громкости.',
+      params: gain(12) },
 
-    { id: 'up6',
-      label: 'D — +6 дБ',
-      note: 'Фон вдвое громче нынешнего — почти вровень с мелодией. '
-          + 'Здесь уже есть риск, что он начнёт спорить с ней за внимание.',
-      params: lift(6) },
+    { id: 'solo',
+      label: 'D — только фон',
+      aid: true,
+      note: 'Не вариант, а подсказка: мелодия, бас и барабаны убраны, остались '
+          + 'только фон и расовый инструмент. Послушай один раз, чтобы знать, '
+          + 'что именно искать в A, B и C.',
+      score(s) {
+        ['lead', 'counter', 'bass', 'perc'].forEach((k) => { s.tracks[k].length = 0; });
+      } },
   ],
 };

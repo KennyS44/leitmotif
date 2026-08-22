@@ -133,7 +133,20 @@ code. That is why the player shows the whole length and can be moved through.
 
 ## Open
 
-**How far the background should come up.** Kenny hears the pad and the race's
-instrument, but has to listen for them. They sit about 6 dB under the melody.
-On the A/B page now: +2, +4 and +6 dB, both parts raised together. Only the
-amount differs between the versions, so the answer is one letter.
+**Whether the background can be heard at all.** Asked for it "a little louder",
+I offered +2, +4 and +6 dB. None of them was audible to Kenny — and measurement
+says the versions really do differ, so the ear is not at fault.
+
+What the measurement says: turning the background *off completely* changes the
+mix by about 9 dB, and +6 dB changes it by about 11. Two edits that far apart in
+intent and that close in effect mean level is the wrong knob.
+
+The likely reason, on Dame Ilsabet: the melody sits at MIDI 76–95 and the pad at
+57–67 — an octave and a half below, with no overlap at all. It is not behind the
+melody, it is under the floor, and turning up a floor makes it a louder floor.
+The race's instrument plays 11 notes in 49 seconds, which is too few to register
+as a presence however loud they are.
+
+On the A/B page now: silence, a deliberate excess, and the background soloed as
+a listening aid. Not a proposal — a calibration, to find out whether the knob
+does anything before spending another round turning it.

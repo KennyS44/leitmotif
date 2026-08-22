@@ -56,7 +56,7 @@ function whyLine() {
 
 function drawVersions() {
   el('versions').innerHTML = variants.map((v, i) => `
-    <button type="button" class="version" data-i="${i}"
+    <button type="button" class="version${v.aid ? ' version--aid' : ''}" data-i="${i}"
             aria-pressed="${i === pick}">${v.label}</button>`).join('');
   el('note').textContent = variants[pick].note || '';
 }
@@ -146,7 +146,12 @@ function drawDiff() {
   const map = el('diffmap');
   const note = el('diffnote');
   const armed = buffers[pick];
-  const others = variants.map((_, i) => i).filter((i) => i !== pick && buffers[i]);
+  /* listening aids and deliberate extremes are left out: the map exists to show
+     where the real candidates part company, and something that removes half the
+     band would light it end to end and say nothing */
+  const others = variants
+    .map((_, i) => i)
+    .filter((i) => i !== pick && buffers[i] && !variants[i].aid);
   if (!armed || !others.length) { map.innerHTML = ''; note.textContent = ''; return null; }
 
   const each = others.map((i) => divergence(armed, buffers[i]));

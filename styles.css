@@ -343,6 +343,10 @@ button:disabled:hover { border-color: var(--line); color: var(--text); }
   background: var(--accent-soft);
 }
 
+/* a listening aid, not a candidate: dashed, so it does not read as one of the
+   things being chosen between */
+.version--aid { border-style: dashed; }
+
 .ready {
   font-size: 14px;
   color: var(--muted);
