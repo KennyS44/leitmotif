@@ -24,7 +24,7 @@ window.VARIANTS = {
      class may still be heard as a second tune. It was quietened, not removed —
      and quietening a voice that has its own timbre does not stop it being a
      separate voice. Two ways further, and both have a real cost. */
-  on: 'Pip Underbough',
+  on: 'Ogrim Stoneback',
 
   list: [
     { id: 'now',
