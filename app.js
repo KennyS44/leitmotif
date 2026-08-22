@@ -18,7 +18,7 @@ function stop() {
   if (!live) return;
   cancelAnimationFrame(live.raf);
   live.card.classList.remove('is-playing');
-  live.button.textContent = 'Play theme';
+  live.button.textContent = T('play');
   const dying = live.ctx;
   live = null;
   /* closing the context is the one way to silence notes that were already
@@ -37,7 +37,7 @@ function play(ch, card, button) {
   const endsAt = renderScore(ctx, score, p);
 
   card.classList.add('is-playing');
-  button.textContent = 'Stop';
+  button.textContent = T('stop');
   const fill = card.querySelector('.bar__fill');
   const startedAt = ctx.currentTime;
 
@@ -132,7 +132,7 @@ const VOICE_NAMES = {
   brass: 'brass', horn: 'low horns', strings: 'bowed strings', choir: 'choir',
   air: 'airy pad', dark: 'dark pad', lute: 'lute', pizz: 'pizzicato',
   bell: 'bells', flute: 'flute', harp: 'harp', fiddle: 'fiddle',
-  organ: 'organ', whistle: 'low whistle', glass: 'glass',
+  organ: 'organ', whistle: 'low whistle', glass: 'glass', pulse: 'pulse synth',
 };
 
 const EN = {
@@ -158,7 +158,8 @@ const EN = {
     over: 'over', answering: 'answering', arriving: 'arriving partway',
     pedal: 'mode on a pedal', leaning: 'mode, leaning on its',
     beats: 'beats', at: 'at', bpm: 'bpm', swung: 'swung', beat: 'beat',
-    drone: 'an open drone beneath', rough: 'a rough edge on the tone',
+    strain: 'class and race pulling apart', drone: 'an open drone beneath',
+    rough: 'a rough edge on the tone',
     unresolved: 'unresolved harmony', bigRoom: 'a large room',
     dryRoom: 'a dry, close room',
   },
@@ -219,6 +220,7 @@ function why(p) {
     `<b>${p.beats}</b> ${plural(p.beats, 'beatForms', W('beats'))} ${W('at')} <b>${p.tempo}</b> ${W('bpm')}`
       + `${p.swing ? `, ${W('swung')}` : ''}`,
     `${W('beat')} <b class="beat">${rhythmGlyphs(p)}</b>`,
+    p.strain > 0.45 ? W('strain') : null,
     p.drone ? W('drone') : null,
     p.rough > 0.25 ? W('rough') : null,
     p.tension > 0.45 ? W('unresolved') : null,

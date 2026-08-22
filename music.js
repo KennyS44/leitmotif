@@ -66,12 +66,14 @@ const FORM = [
  *
  * So the four phrases are staged. The theme starts nearly bare, gathers, builds
  * through the contrast phrase, and comes back full. */
-function staging(phrase, buildAt, bare) {
+function staging(phrase, buildAt, bare, flags) {
   return {
     pad: phrase >= 1,
     counter: phrase >= buildAt,
-    hue: phrase >= 1 && phrase !== 3,
-    kit: phrase < bare ? 'spare' : 'full',
+    /* a hushed character keeps one layer to itself: the band thins out around
+       the melody instead of the melody merely turning its volume down */
+    hue: phrase >= 1 && phrase !== 3 && !flags.hushed,
+    kit: phrase < bare || (flags.hushed && phrase < 2) ? 'spare' : 'full',
     build: phrase === buildAt,
   };
 }
@@ -234,7 +236,7 @@ function composeScore(p) {
 
   for (let ph = 0; ph < PHRASES; ph += 1) {
     const form = FORM[ph];
-    const plan = staging(ph, buildAt, bare);
+    const plan = staging(ph, buildAt, bare, p.flags || {});
     const roles = trim(form.roles);
     const chords = trim(form.chords === 'home' ? homePick.degrees : AWAY_CHORDS);
     /* only the contrast phrase moves; the A phrases all sit at the same height
@@ -321,6 +323,9 @@ function composeScore(p) {
         const gap = (next - slot) * slotDur;
         const dur = Math.max(MIN_NOTE, gap * p.legato) + OVERLAP;
         const accent = cell[slot] === 2;
+        /* a scarred voice does not sound rough so much as unreliable: every so
+           often a note simply does not come out */
+        if ((p.flags || {}).brittle && !accent && barRand() < 0.18) return;
         tracks.lead.push({
           t: t + timeOf(slot),
           midi: Math.max(floor, leadCentre + scalePitch(p, degree)),
@@ -398,7 +403,13 @@ function composeScore(p) {
      tonic together, once, and holds. A piece that ends on a decision sounds
      finished; one that fades sounds abandoned. */
   const endAt = PHRASES * barsPerPhrase * barDur;
-  const hold = Math.max(1.8, barDur * 0.9);
+  /* Not every character finishes the same way. A hot-headed one stops the way
+     it speaks — the chord is struck and cut. A settled one is allowed to ring.
+     A single ending for everybody was the tell that the form was a template. */
+  const flags = p.flags || {};
+  const abrupt = flags.abrupt && !flags.settled;
+  const hold = abrupt ? Math.max(0.35, barDur * 0.22)
+    : Math.max(1.8, barDur * (flags.settled ? 1.2 : 0.9));
   const tonic = scalePitch(p, 0);
   tracks.bass.push({ t: endAt, midi: bassRoot + tonic, dur: hold, vel: 0.62 });
   padVoicing(p, 0).forEach((semi) => {
@@ -407,18 +418,27 @@ function composeScore(p) {
   tracks.lead.push({ t: endAt, midi: leadCentre + tonic, dur: hold, vel: Math.min(1, p.dyn * 1.15) });
   if (p.hue) tracks.hue.push({ t: endAt, midi: padRoot + 12 + tonic, dur: hold, vel: 0.42 });
   if (p.perc) {
-    tracks.perc.push({ t: endAt, kind: 'gong', vel: 0.55 + p.dyn * 0.25 });
+    if (!abrupt) tracks.perc.push({ t: endAt, kind: 'gong', vel: 0.55 + p.dyn * 0.25 });
     tracks.perc.push({ t: endAt, kind: 'kick', vel: 0.60 + p.dyn * 0.25 });
   }
 
-  const duration = endAt + hold + 1.6;
+  /* an abrupt ending gets almost no room afterwards — the silence is the point */
+  const duration = endAt + hold + (abrupt ? 0.5 : 1.6);
   return { duration, barDur, beats, barsPerPhrase, cell, motif, swing, endAt,
-           buildAt, bare, tracks };
+           buildAt, bare, abrupt, tracks };
 }
 
 /* The pad's voicing, and the one place the mode's colour is guaranteed to be
    heard in the harmony even if the melody is busy elsewhere. */
 function padVoicing(p, deg) {
+  const flags = p.flags || {};
+  /* An old character gets harmony older than the third: bare fifths, the sound
+     of music before anyone agreed that thirds were consonant. It is the
+     cheapest way to make a theme feel remembered rather than composed. */
+  if (flags.archaic) {
+    return [...new Set([scalePitch(p, deg), scalePitch(p, deg + 4), scalePitch(p, deg) + 12]
+      .map((s) => ((s % 12) + 12) % 12))];
+  }
   const tones = [0, 2, 4];
   if (p.colour === null) tones[1] = 3;        /* suspended fourth for ionian */
   if (p.tension > 0.45) tones.push(6);        /* a seventh on top */
@@ -446,9 +466,9 @@ function addPerc(out, p, t, timeOf, cell, beats, plan, swell, lastOfPhrase) {
   const v = (0.42 + p.dyn * 0.25) * swell;
   const push = (slot, kind, vel) => out.push({ t: t + timeOf(slot), kind, vel });
 
-  const LOW = { martial: 'kick', heavy: 'kick', light: 'kick', frame: 'frame', wood: 'wood' };
-  const BACK = { martial: 'snare', heavy: 'tom', light: 'snare', frame: 'frame', wood: 'wood' };
-  const TICK = { martial: 'shaker', heavy: 'shaker', light: 'shaker', frame: 'shaker', wood: 'wood' };
+  const LOW = { martial: 'kick', heavy: 'kick', light: 'kick', frame: 'frame', wood: 'wood', tick: 'kick' };
+  const BACK = { martial: 'snare', heavy: 'tom', light: 'snare', frame: 'frame', wood: 'wood', tick: 'tick' };
+  const TICK = { martial: 'shaker', heavy: 'shaker', light: 'shaker', frame: 'shaker', wood: 'wood', tick: 'tick' };
 
   /* 1. the character's own accents, on the low drum */
   cell.forEach((val, s) => {
@@ -531,6 +551,9 @@ function detuneOsc(ctx, type, freq, cents, t, stop) {
 
 /* Each voice is a tiny patch. They are deliberately plain — the prototype is
    testing whether the mapping is audible, not whether the samples are pretty. */
+/* how much of a voice's detune survives, by note length */
+const spread = (dur) => (dur > 1.2 ? 0.45 : (dur > 0.6 ? 0.7 : 1));
+
 function playNote(ctx, dest, voice, note, p) {
   const t = note.t;
   const f = freqOf(note.midi);
@@ -547,8 +570,13 @@ function playNote(ctx, dest, voice, note, p) {
     filt.frequency.setValueAtTime(cutoff * (0.6 + vel * 0.8), t);
     filt.Q.value = 0.7;
     filt.connect(out);
-    cents.forEach((c) => {
-      const o = detuneOsc(ctx, wave, f, c + (Math.random() - 0.5) * rough * 30, t, stop);
+    cents.forEach((c, i) => {
+      /* Detuned copies beat against each other, and on a long note the beating
+         is slow enough to be heard as the pitch wandering. So the spread is
+         narrowed as the note lengthens. The offset is derived from the note
+         rather than drawn at random, because the same sheet must give the same
+         sound on every machine. */
+      const o = detuneOsc(ctx, wave, f, (c + (i - 1) * rough * 12) * spread(note.dur), t, stop);
       o.connect(filt);
     });
     env(ctx, out, t, note.dur, vel * 0.30, attack * atk, release);
@@ -563,7 +591,7 @@ function playNote(ctx, dest, voice, note, p) {
       filt.frequency.linearRampToValueAtTime(1100 + 2200 * vel, t + 0.08 * atk);
       filt.frequency.linearRampToValueAtTime(700 + 900 * vel, t + note.dur);
       filt.connect(out);
-      [-7 - rough * 20, 6 + rough * 20].forEach((c) => detuneOsc(ctx, 'sawtooth', f, c, t, stop).connect(filt));
+      [-7 - rough * 14, 6 + rough * 14].forEach((c) => detuneOsc(ctx, 'sawtooth', f, c * spread(note.dur), t, stop).connect(filt));
       env(ctx, out, t, note.dur, vel * 0.26, 0.05 * atk, 0.22);
       break;
     }
@@ -574,7 +602,7 @@ function playNote(ctx, dest, voice, note, p) {
       filt.frequency.setValueAtTime(300, t);
       filt.frequency.linearRampToValueAtTime(700 + 900 * vel, t + 0.12 * atk);
       filt.connect(out);
-      [-10 - rough * 25, 9 + rough * 25].forEach((c) => detuneOsc(ctx, 'sawtooth', f, c, t, stop).connect(filt));
+      [-10 - rough * 16, 9 + rough * 16].forEach((c) => detuneOsc(ctx, 'sawtooth', f, c * spread(note.dur), t, stop).connect(filt));
       detuneOsc(ctx, 'sine', f / 2, 0, t, stop).connect(filt);
       env(ctx, out, t, note.dur, vel * 0.30, 0.07 * atk, 0.28);
       break;
@@ -594,7 +622,7 @@ function playNote(ctx, dest, voice, note, p) {
       lfo.connect(lfoAmt);
       lfo.start(t); lfo.stop(stop);
       [-12, 0, 11].forEach((c) => {
-        const o = detuneOsc(ctx, 'sawtooth', f, c, t, stop);
+        const o = detuneOsc(ctx, 'sawtooth', f, c * spread(note.dur), t, stop);
         lfoAmt.connect(o.detune);
         o.connect(filt);
       });
@@ -623,7 +651,7 @@ function playNote(ctx, dest, voice, note, p) {
       filt.frequency.setValueAtTime(3400, t);
       filt.frequency.exponentialRampToValueAtTime(700, t + 0.6);
       filt.connect(out);
-      [-4, 5].forEach((c) => detuneOsc(ctx, 'sawtooth', f, c + rough * 20, t, stop).connect(filt));
+      [-4, 5].forEach((c) => detuneOsc(ctx, 'sawtooth', f, (c + rough * 12) * spread(note.dur), t, stop).connect(filt));
       out.gain.setValueAtTime(0.0001, t);
       out.gain.exponentialRampToValueAtTime(vel * 0.30, t + 0.006 * atk);
       out.gain.exponentialRampToValueAtTime(0.0001, t + 0.9 + note.dur * 0.4);
@@ -705,7 +733,7 @@ function playNote(ctx, dest, voice, note, p) {
       const amt = ctx.createGain(); amt.gain.value = 9;
       lfo.connect(amt); lfo.start(t); lfo.stop(stop);
       [-6, 7].forEach((c) => {
-        const o = detuneOsc(ctx, 'sawtooth', f, c, t, stop);
+        const o = detuneOsc(ctx, 'sawtooth', f, c * spread(note.dur), t, stop);
         amt.connect(o.detune);
         o.connect(filt);
       });
@@ -752,9 +780,24 @@ function playNote(ctx, dest, voice, note, p) {
       env(ctx, out, t, note.dur, vel * 0.26, 0.14 * atk, 0.22);
       break;
     }
+    case 'pulse': {
+      /* the artificer is the one class whose century is not the others': a
+         square wave with a moving filter is a machine, not a minstrel */
+      const stop = t + note.dur + 0.2;
+      const filt = ctx.createBiquadFilter();
+      filt.type = 'lowpass'; filt.Q.value = 6;
+      filt.frequency.setValueAtTime(400 + 2600 * vel, t);
+      filt.frequency.exponentialRampToValueAtTime(500, t + note.dur + 0.15);
+      filt.connect(out);
+      detuneOsc(ctx, 'square', f, -5, t, stop).connect(filt);
+      detuneOsc(ctx, 'square', f, 6, t, stop).connect(filt);
+      detuneOsc(ctx, 'sine', f / 2, 0, t, stop).connect(filt);
+      env(ctx, out, t, note.dur, vel * 0.20, 0.01 * atk, 0.10);
+      break;
+    }
     case 'glass': {
       const stop = t + 2.4;
-      [[1, 0.24], [2.01, 0.09], [3.02, 0.04]].forEach(([mult, amp]) => {
+      [[1, 0.24], [2.005, 0.09], [3.01, 0.04]].forEach(([mult, amp]) => {
         const o = detuneOsc(ctx, 'sine', f * mult, 0, t, stop);
         const g = ctx.createGain();
         g.gain.setValueAtTime(0.0001, t);
@@ -803,6 +846,7 @@ function playHit(ctx, dest, hit) {
     case 'snare':  noise(1900, 'bandpass', 1.1, 0.17, 0.22); thump(200, 150, 0.10, 0.14); break;
     case 'shaker': noise(7200, 'highpass', 0.8, 0.055, 0.16); break;
     case 'wood':   noise(2500, 'bandpass', 9.0, 0.05, 0.30); break;
+    case 'tick':   noise(5200, 'bandpass', 12.0, 0.03, 0.26); break;
     case 'frame':  noise(420, 'lowpass', 1.0, 0.24, 0.30); thump(110, 74, 0.22, 0.30); break;
     /* the closing stroke: a long metallic wash under the final chord */
     case 'gong':   noise(1100, 'bandpass', 0.5, 2.6, 0.20); thump(90, 58, 1.4, 0.34); break;

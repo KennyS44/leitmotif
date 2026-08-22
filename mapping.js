@@ -96,7 +96,7 @@ const CLASSES = {
   wizard:     { label: 'Wizard',     family: { steps: [2, 3, 1],          contour: 'rise', target: [5, 8],   len: [4, 4] },     lead: 'harp',   pad: 'glass',   perc: 'wood',    tempo:  -4, rev: +0.15 },
   sorcerer:   { label: 'Sorcerer',   family: { steps: [3, 2, 4, -1],      contour: 'rise', target: [4, 7],   len: [4, 4] },   lead: 'glass',  pad: 'air',     perc: 'light',   tempo:  +2, orn: +0.25, rev: +0.10 },
   warlock:    { label: 'Warlock',    family: { steps: [-1, -2, -3, 1],    contour: 'fall', target: [-5, -2], len: [4, 4] },    lead: 'bell',   pad: 'dark',    perc: 'frame',   tempo:  -6, tension: +0.25, reg: -5 },
-  artificer:  { label: 'Artificer',  family: { steps: [1, 2, -1],         contour: 'rise', target: [1, 3],   len: [4, 5] },  lead: 'strings',pad: 'organ',   perc: 'wood',    tempo:  +4, sync: +0.20 },
+  artificer:  { label: 'Artificer',  family: { steps: [1, 2, -1],         contour: 'rise', target: [1, 3],   len: [4, 5] },  lead: 'pulse',  pad: 'organ',   perc: 'tick',    tempo:  +4, sync: +0.20 },
 };
 
 /* A subclass is not a second class, and it should not sound like one.
@@ -112,8 +112,8 @@ const SUBCLASSES = {
   paladin: {
     devotion:  { label: 'Oath of Devotion',     tail: [7, 4],  cadence: +0.15, rev: +0.10, hue: 'choir' },
     ancients:  { label: 'Oath of the Ancients', tail: [6, 4],  orn: +0.15, tempo: -4, hue: 'flute' },
-    vengeance: { label: 'Oath of Vengeance',    tail: [3, -1], tension: +0.20, attack: 0.75, dyn: +0.08 },
-    conquest:  { label: 'Oath of Conquest',     tail: [1, -3], tension: +0.25, reg: -5, dyn: +0.12, rough: 0.15 },
+    vengeance: { label: 'Oath of Vengeance',    tail: [3, -4], tension: +0.35, attack: 0.55, dyn: +0.14, rough: 0.22, tempo: +6, hue: 'horn' },
+    conquest:  { label: 'Oath of Conquest',     tail: [1, -5], tension: +0.30, reg: -7, dyn: +0.14, rough: 0.20, hue: 'dark' },
   },
   cleric: {
     life:      { label: 'Life Domain',      tail: [4, 2],  rev: +0.15, tension: -0.10, hue: 'choir' },
@@ -182,9 +182,13 @@ const RACES = {
                 reg: +7,  tempo: +12, orn: +0.30, leap: +0.15, legato: 0.70 },
   tiefling:   { label: 'Tiefling', hue: 'whistle',   beats: 5, swing: 0.12, cell: [2, 0, 1, 0, 0, 1, 1, 0, 1, 0],
                 tension: +0.25, orn: +0.15, reg: -3 },
-  dragonborn: { label: 'Dragonborn', hue: 'organ', beats: 3, cell: [2, 0, 0, 0, 1, 0],
+  dragonborn: { label: 'Dragonborn', hue: 'brass', beats: 3, cell: [2, 0, 0, 0, 1, 0],
                 reg: -5,  tempo: -8, dyn: +0.15 },
-  halforc:    { label: 'Half-Orc', hue: 'horn',   beats: 4, cell: [2, 0, 0, 1, 2, 0, 0, 1],
+  /* Orc is a Player's Handbook species in its own right; Half-Orc and Half-Elf
+     are kept because tables that still use the older rules have them. */
+  orc:        { label: 'Orc', hue: 'horn',        beats: 4, cell: [2, 0, 1, 0, 2, 1, 0, 1],
+                reg: -9,  tempo: +6, dyn: +0.18, orn: -0.20, rough: 0.15 },
+  halforc:    { label: 'Half-Orc', hue: 'lute',   beats: 4, cell: [2, 0, 0, 1, 2, 0, 0, 1],
                 reg: -7,  tempo: +4, dyn: +0.15, orn: -0.15 },
   halfelf:    { label: 'Half-Elf', hue: 'harp',   beats: 4, cell: [2, 0, 1, 0, 1, 0, 2, 0, 0, 1, 0, 0],
                 reg: +3,  orn: +0.12, legato: 1.15 },
@@ -200,41 +204,41 @@ const RACES = {
    sparse. Nothing here changes the instruments — that would fight the class. */
 const TRAITS = {
   brave:      { label: 'Brave',       dyn: +0.15, leap: +0.15, rise: +0.30 },
-  shy:        { label: 'Shy',         dyn: -0.25, leap: -0.15, cellMod: -0.15, reg: +5 },
-  rude:       { label: 'Rude',        dyn: +0.20, leap: +0.20, legato: 0.70, rough: 0.15 },
+  shy:        { label: 'Shy',         dyn: -0.30, leap: -0.20, cellMod: -0.15, reg: -2, flag: 'hushed' },
+  rude:       { label: 'Rude',        dyn: +0.20, leap: +0.20, legato: 0.70, rough: 0.15, flag: 'abrupt' },
   kind:       { label: 'Kind',        dyn: -0.05, legato: 1.25, tension: -0.10 },
   cruel:      { label: 'Cruel',       tension: +0.30, leap: +0.10, legato: 0.75 },
-  calm:       { label: 'Calm',        tempo: -8, legato: 1.35, cellMod: -0.15, dyn: -0.10 },
+  calm:       { label: 'Calm',        tempo: -8, legato: 1.35, cellMod: -0.15, dyn: -0.10, flag: 'settled' },
   restless:   { label: 'Restless',    tempo: +8, cellMod: +0.20, sync: +0.15 },
   proud:      { label: 'Proud',       dyn: +0.12, reg: -2, cadence: +0.20 },
-  humble:     { label: 'Humble',      dyn: -0.15, leap: -0.15, orn: -0.10 },
+  humble:     { label: 'Humble',      dyn: -0.15, leap: -0.15, orn: -0.10, flag: 'hushed' },
   cunning:    { label: 'Cunning',     sync: +0.25, orn: +0.15, tension: +0.10, cellMod: -0.05 },
   honest:     { label: 'Honest',      sync: -0.15, orn: -0.15, cadence: +0.25 },
   greedy:     { label: 'Greedy',      tension: +0.15, orn: +0.20, sync: +0.10 },
   loyal:      { label: 'Loyal',       cadence: +0.25, tension: -0.10, legato: 1.15 },
-  reckless:   { label: 'Reckless',    tempo: +10, sync: +0.25, leap: +0.20, cadence: -0.25 },
+  reckless:   { label: 'Reckless',    tempo: +10, sync: +0.25, leap: +0.20, cadence: -0.25, flag: 'abrupt' },
   curious:    { label: 'Curious',     orn: +0.25, leap: +0.10, cellMod: +0.10 },
   cheerful:   { label: 'Cheerful',    tempo: +6, dyn: +0.08, tension: -0.15, cellMod: +0.10 },
   gloomy:     { label: 'Gloomy',      tempo: -10, tension: +0.15, reg: -5, dyn: -0.10 },
   stubborn:   { label: 'Stubborn',    sync: -0.20, orn: -0.20, dyn: +0.10, cellMod: -0.05 },
-  wise:       { label: 'Wise',        tempo: -6, legato: 1.30, orn: -0.05, rev: +0.10 },
-  hotheaded:  { label: 'Hot-headed',  tempo: +12, dyn: +0.15, sync: +0.20, legato: 0.70 },
+  wise:       { label: 'Wise',        tempo: -6, legato: 1.30, orn: -0.05, rev: +0.10, flag: 'settled' },
+  hotheaded:  { label: 'Hot-headed',  tempo: +12, dyn: +0.15, sync: +0.20, legato: 0.70, flag: 'abrupt' },
 };
 
 /* Looks own timbre and space: how the instrument is played and what room it is
    played in. This is where a photo would eventually plug in. */
 const LOOKS = {
-  old:        { label: 'Old',        tempo: -10, reg: -7, attack: 1.60, rev: +0.15 },
+  old:        { label: 'Old',        tempo: -10, reg: -7, attack: 1.60, rev: +0.15, flag: 'archaic' },
   young:      { label: 'Young',      tempo: +8,  reg: +5, attack: 0.75 },
   stern:      { label: 'Stern',      attack: 0.60, rev: -0.12, reg: -5, dyn: +0.10 },
-  gentle:     { label: 'Gentle',     attack: 1.50, dyn: -0.15, rev: +0.10 },
-  scarred:    { label: 'Scarred',    rough: 0.25, attack: 0.70, dyn: +0.05 },
+  gentle:     { label: 'Gentle',     attack: 1.50, dyn: -0.15, rev: +0.10, flag: 'settled' },
+  scarred:    { label: 'Scarred',    rough: 0.30, attack: 0.65, dyn: +0.05, flag: 'brittle' },
   beautiful:  { label: 'Beautiful',  rev: +0.20, tension: -0.10, legato: 1.20 },
   huge:       { label: 'Huge',       reg: -12, tempo: -6, dyn: +0.15, rev: +0.10 },
   small:      { label: 'Small',      reg: +12, tempo: +6, dyn: -0.10 },
-  weathered:  { label: 'Weathered',  rough: 0.20, reg: -4, tempo: -4 },
+  weathered:  { label: 'Weathered',  rough: 0.20, reg: -4, tempo: -4, flag: 'archaic' },
   elegant:    { label: 'Elegant',    orn: +0.20, legato: 1.25, dyn: -0.05 },
-  filthy:     { label: 'Filthy',     rough: 0.35, rev: -0.10, tension: +0.10 },
+  filthy:     { label: 'Filthy',     rough: 0.35, rev: -0.10, tension: +0.10, flag: 'brittle' },
   radiant:    { label: 'Radiant',    rev: +0.25, reg: +5, tension: -0.15 },
   gaunt:      { label: 'Gaunt',      dyn: -0.12, rev: +0.10, tension: +0.10, cellMod: -0.10 },
   burly:      { label: 'Burly',      reg: -9, dyn: +0.15, attack: 0.80 },
@@ -288,15 +292,21 @@ function characterToParams(ch) {
   applyEntry(p, align);
 
   /* Optional fields only colour what the required three already decided.
-     Halved so that no single tag can turn a paladin into a bard. */
+     Weighted, so that no single tag can turn a paladin into a bard — but at
+     0.85 rather than the old 0.6, because the class was drowning them out.
+     A tag also gets to raise a FLAG, which is categorical the way a class is:
+     "old" does not merely slow the tempo, it changes the harmony to open
+     fifths. Numbers alone could always be out-shouted; a flag cannot. */
+  p.flags = {};
   const soft = (entry) => {
     if (!entry) return;
-    const half = {};
-    ADDITIVE.forEach((k) => { if (typeof entry[k] === 'number') half[k] = entry[k] * 0.6; });
+    const part = {};
+    ADDITIVE.forEach((k) => { if (typeof entry[k] === 'number') part[k] = entry[k] * 0.85; });
     MULTIPLIED.forEach((k) => {
-      if (typeof entry[k] === 'number') half[k] = 1 + (entry[k] - 1) * 0.6;
+      if (typeof entry[k] === 'number') part[k] = 1 + (entry[k] - 1) * 0.85;
     });
-    applyEntry(p, half);
+    applyEntry(p, part);
+    if (entry.flag) p.flags[entry.flag] = true;
   };
   (ch.traits || []).slice(0, 5).forEach((t) => soft(TRAITS[t]));
   (ch.looks || []).slice(0, 5).forEach((t) => soft(LOOKS[t]));
@@ -339,15 +349,35 @@ function characterToParams(ch) {
   /* A race colour that happens to be the class's own lead adds nothing — a
      dwarf cleric would be organ answered by organ. Fall back to the first
      instrument nobody else in the band is using. */
-  const taken = [p.lead, p.pad, p.counter];
+  const taken = [p.lead, p.counter];
   if (p.hue && taken.includes(p.hue)) {
-    p.hue = ['harp', 'flute', 'fiddle', 'glass', 'whistle', 'lute', 'bell']
-      .find((v) => !taken.includes(v)) || null;
+    /* Picked by seed, not by taking the first free name off a list — that
+       version handed a harp to almost everybody and quietly undid the variety
+       the colour instrument was added for. Doubling the pad is allowed; only
+       answering the lead with the lead itself is pointless. */
+    const spare = ['harp', 'flute', 'fiddle', 'glass', 'whistle', 'lute', 'bell',
+                   'choir', 'horn', 'organ', 'pizz']
+      .filter((v) => !taken.includes(v) && v !== p.pad);
+    p.hue = spare.length
+      ? spare[Math.floor(seeded(p.seed ^ 0x1b873593)() * spare.length)] : null;
   }
   if (second) {
     /* a fraction of the second class's character, so the mix leans primary */
     p.tempo += (second.tempo || 0) * 0.4;
     p.tension += (second.tension || 0) * 0.4;
+  }
+
+  /* When a class and a race pull in opposite directions — a broad, slow people
+     carrying a quick, driving calling — the theme should show the strain rather
+     than average it away. A wide mismatch pushes the tempo further out in the
+     class's direction and moves the key a fourth, which the ear reads as the
+     same character in a different tuning. Averaging would have produced a
+     character who is neither, and sounded like nothing. */
+  const clsPull = (cls.tempo || 0) / 12 + (cls.reg || 0) / 12;
+  const racePull = (race.tempo || 0) / 12 + (race.reg || 0) / 12;
+  p.strain = Math.min(1, Math.abs(clsPull - racePull) / 2.2);
+  if (p.strain > 0.45) {
+    p.tempo += Math.sign(clsPull - racePull) * 6 * p.strain;
   }
 
   p.mode = MODES[align.mode].steps;
@@ -357,6 +387,7 @@ function characterToParams(ch) {
   /* The key itself comes from the name, so two identical builds with different
      names are still distinguishable, but the character stays recognisable. */
   p.root = 45 + (hashString(ch.name || '') % 12);   /* A2 upwards */
+  if (p.strain > 0.45) p.root = 45 + ((p.root - 45 + 5) % 12);
 
   p.tempo = clamp(Math.round(p.tempo), 52, 168);
   p.reg = clamp(Math.round(p.reg), -24, 24);

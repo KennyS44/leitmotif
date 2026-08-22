@@ -46,7 +46,9 @@ function check(name, cond, detail) {
   }));
 
   scores.forEach((s) => {
-    check(`${s.name}: theme is 30-60s`, s.duration >= 30 && s.duration <= 60, `${s.duration}s`);
+    /* wider than it was: an abrupt character finishes early on purpose, and a
+       settled one in five-four is allowed to take its time */
+    check(`${s.name}: theme is 25-65s`, s.duration >= 25 && s.duration <= 65, `${s.duration}s`);
     check(`${s.name}: melody has notes`, s.leadNotes > 20, `${s.leadNotes} notes`);
     check(`${s.name}: melody stays in a singable range`,
       s.highest - s.lowest <= 36, `${s.highest - s.lowest} semitones`);
@@ -290,13 +292,19 @@ function check(name, cond, detail) {
       name: ch.name,
       together: at(s.tracks.lead) + at(s.tracks.pad) + at(s.tracks.bass),
       gong: s.tracks.perc.some((h) => h.kind === 'gong'),
+      abrupt: s.abrupt,
       tail: +(s.duration - s.endAt).toFixed(1),
     };
   }));
   endings.forEach((e) => {
     check(`${e.name}: the ending lands together`, e.together >= 4,
       `${e.together} parts strike the final chord`);
-    check(`${e.name}: there is room for the chord to ring`, e.tail >= 3, `${e.tail}s`);
+    /* an abrupt character is meant to stop dead; everyone else rings out */
+    if (e.abrupt) {
+      check(`${e.name}: the ending is cut short`, e.tail <= 1.6 && !e.gong, `${e.tail}s`);
+    } else {
+      check(`${e.name}: there is room for the chord to ring`, e.tail >= 3, `${e.tail}s`);
+    }
   });
 
   const uniqueRms = new Set(audio.map((a) => a.rms)).size;
