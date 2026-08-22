@@ -133,20 +133,31 @@ code. That is why the player shows the whole length and can be moved through.
 
 ## Open
 
-**Whether the background can be heard at all.** Asked for it "a little louder",
-I offered +2, +4 and +6 dB. None of them was audible to Kenny — and measurement
-says the versions really do differ, so the ear is not at fault.
+**Which part of the background is in the way.**
 
-What the measurement says: turning the background *off completely* changes the
-mix by about 9 dB, and +6 dB changes it by about 11. Two edits that far apart in
-intent and that close in effect mean level is the wrong knob.
+Asked for the background "a little louder", I offered +2, +4 and +6 dB and none
+of it was audible. Measurement said the versions really did differ, so the ear
+was not at fault: turning the background *off completely* changes the mix by
+about 9 dB and +6 dB changes it by about 11. Two edits that far apart in intent
+and that close in effect mean level is the wrong knob.
 
-The likely reason, on Dame Ilsabet: the melody sits at MIDI 76–95 and the pad at
-57–67 — an octave and a half below, with no overlap at all. It is not behind the
-melody, it is under the floor, and turning up a floor makes it a louder floor.
-The race's instrument plays 11 notes in 49 seconds, which is too few to register
-as a presence however loud they are.
+The calibration round that followed — silence against a deliberate excess —
+returned something better than a yes or a no: **without the background the music
+was cleaner and more pleasant.**
 
-On the A/B page now: silence, a deliberate excess, and the background soloed as
-a listening aid. Not a proposal — a calibration, to find out whether the knob
-does anything before spending another round turning it.
+Measurement agrees and says where. The pad adds about a decibel between 240 and
+480 Hz and nothing anywhere else, on every character measured. That band is
+where sound piles up without being heard as anything: too low to carry a tune,
+too high to be the bottom, and crowded already by the lower harmonics of
+everything above it. Filling it does not add a part, it adds a veil. Now
+measured every run as `mud`.
+
+*Flaw in my own experiment, recorded so it is not repeated:* the version that
+won removed **two** parts, the pad and the race's instrument, so it did not say
+which. The current round changes one at a time.
+
+*Prediction to be checked by ear, made before listening:* the pad is the culprit
+and the race's instrument is not — removing the pad drops the crowding by ~0.045
+on Ilsabet and Marrow, removing the race instrument by ~0.003. On Ashen Vell,
+whose pad sits high, removing the pad makes it slightly *worse*, so the answer
+there should differ. If the ear disagrees, the measure is wrong and goes.

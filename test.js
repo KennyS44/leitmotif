@@ -411,6 +411,8 @@ function watch(name, held, detail) {
         bright: Math.round(cross / (buf.length / buf.sampleRate)),
         /* «мусор», «колебания» — see metrics.js */
         wobble: window.Metrics.wobble(buf),
+        /* «менее чисто» — energy piled into 200-500 Hz */
+        mud: window.Metrics.mud(buf),
       });
     }
     return out;
@@ -423,9 +425,22 @@ function watch(name, held, detail) {
        bound is set above the worst of them with room: it catches something new
        starting to warble, not the ordinary movement of a theme. */
     check(`${a.name}: nothing warbles`, a.wobble <= 0.24, `wobble ${a.wobble}`);
+    /* «менее чисто». The absolute share means little — that band is where most
+       of any music lives — so this is a tripwire on the trend, not a target.
+       Today the twelve sit between 0.56 and 0.78; the bound was first set from
+       three of them at 0.75 and had to be corrected, which is what a bound
+       invented from a sample rather than from the whole set does. */
+    check(`${a.name}: the low mids are not crowded`, a.mud <= 0.85, `mud ${a.mud}`);
   });
 
   if (FULL) {
+    /* named every run, so the crowded end of the set stays in view instead of
+       passing quietly inside a bound wide enough to hold it */
+    const byMud = [...audio].sort((x, y) => y.mud - x.mud);
+    check('the low mids are known', true,
+      `most crowded ${byMud[0].name} ${byMud[0].mud}, ${byMud[1].name} ${byMud[1].mud};`
+      + ` clearest ${byMud[byMud.length - 1].name} ${byMud[byMud.length - 1].mud}`);
+
     const brights = audio.map((a) => a.bright);
     check('brightness differs across characters',
       Math.max(...brights) - Math.min(...brights) > 200,

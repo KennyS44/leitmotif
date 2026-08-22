@@ -161,6 +161,51 @@ function wobble(buffer) {
   return level ? round(std(band) / level, 3) : 0;
 }
 
+/* «менее чисто», «мутно»
+ *
+ * Energy between roughly 200 and 500 Hz, as a share of the whole. That band is
+ * where instruments pile up without being heard as instruments: too low to
+ * carry a tune, too high to be the bottom, and crowded by the lower harmonics
+ * of everything on top of it. Fill it and the result is not louder, it is less
+ * clear.
+ *
+ * Measured after the pad was found to add about a decibel there and nothing
+ * anywhere else — the whole of its audible contribution was a veil. A number
+ * here means the next attempt at a background can be checked before it is
+ * played to anybody.
+ *
+ * A second-order bandpass, written out rather than taken from an audio graph,
+ * so it can be run on a plain array with no context and no rendering. */
+function bandpass(d, rate, f0, q) {
+  const w = (2 * Math.PI * f0) / rate;
+  const alpha = Math.sin(w) / (2 * q);
+  const a0 = 1 + alpha;
+  const b0 = alpha / a0;
+  const b2 = -alpha / a0;
+  const a1 = (-2 * Math.cos(w)) / a0;
+  const a2 = (1 - alpha) / a0;
+  let x1 = 0; let x2 = 0; let y1 = 0; let y2 = 0;
+  let sum = 0;
+  for (let i = 0; i < d.length; i += 1) {
+    const x = d[i];
+    const y = b0 * x + b2 * x2 - a1 * y1 - a2 * y2;
+    x2 = x1; x1 = x; y2 = y1; y1 = y;
+    sum += y * y;
+  }
+  return Math.sqrt(sum / d.length);
+}
+
+function mud(buffer) {
+  const d = buffer.getChannelData(0);
+  let total = 0;
+  for (let i = 0; i < d.length; i += 1) total += d[i] * d[i];
+  total = Math.sqrt(total / d.length);
+  if (total < 1e-6) return 0;
+  /* centred at 316 Hz — the geometric middle of 200 and 500 — wide enough to
+     cover the band and no wider */
+  return round(bandpass(d, buffer.sampleRate, 316, 0.8) / total, 3);
+}
+
 /* Everything at once. `p` supplies the instruments, `buffer` the samples —
    without the buffer the audio measure is left out, which is what the fast
    level of the checks does. */
@@ -179,10 +224,13 @@ function report(score, p, buffer) {
     hole: t.hole,
     longestHole: t.worst,
   };
-  if (buffer) out.wobble = wobble(buffer);
+  if (buffer) {
+    out.wobble = wobble(buffer);
+    out.mud = mud(buffer);
+  }
   return out;
 }
 
-window.Metrics = { apart, mechanical, torn, wobble, report };
+window.Metrics = { apart, mechanical, torn, wobble, mud, report };
 
 }());

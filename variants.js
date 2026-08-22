@@ -22,60 +22,52 @@
  *
  * ---
  *
- * This round is a calibration, not a proposal.
+ * Last round asked whether the background could be heard at all, and the answer
+ * was better than a yes: without it the music was cleaner. Measurement agrees
+ * and says where — the pad adds about a decibel between 240 and 480 Hz and
+ * nothing anywhere else, on every character measured. That band is where sound
+ * piles up without being heard as anything: too low to carry a tune, too high
+ * to be the bottom. Filling it does not add a part, it adds a veil.
  *
- * Asked for the background "a little louder", I offered +2, +4 and +6 dB and
- * Kenny heard no difference at all — including at +6. So I measured what the
- * background is worth in the mix: turning it off *completely* changes the audio
- * by about 9 dB, and +6 dB changes it by about 11. The two edits are the same
- * size. Something that far apart in intent and that close in effect means level
- * is probably the wrong knob, and no amount of turning it will help.
+ * But that round had a flaw of mine in it: the version that won removed *two*
+ * parts, the pad and the race's instrument, so it does not say which of them
+ * was in the way. Both are plausible and the cures are opposite — one is a
+ * sustained chord bed, the other eleven notes in fifty seconds.
  *
- * So this set does not ask "how much". It asks whether the knob does anything
- * at all: silence against a deliberate excess, with the part on its own first
- * so there is no doubt what to listen for.
+ * So this round changes one thing at a time. It is the same question asked
+ * properly.
  */
 
-const gain = (db) => (p) => {
-  const k = db === null ? 0 : Math.pow(10, db / 20);
-  p.blend.pad.gain *= k;
-  p.blend.hue.gain *= k;
-};
+const drop = (...parts) => ({
+  score(s) { parts.forEach((k) => { s.tracks[k].length = 0; }); },
+});
 
 window.VARIANTS = {
 
-  /* Dame Ilsabet has the busiest pad of the twelve — 60 notes — so if the
-     background is inaudible anywhere, it is inaudible here. */
+  /* the character the finding was heard on */
   on: 'Dame Ilsabet Cross',
 
   list: [
     { id: 'now',
       label: 'A — как сейчас',
-      note: 'Версия с главной страницы. Фон и расовый инструмент примерно '
-          + 'на 6 дБ ниже мелодии.' },
+      note: 'Фон и расовый инструмент оба на месте. Версия с главной страницы.' },
 
-    { id: 'off',
-      label: 'B — фона нет совсем',
-      note: 'Ноль. Не предложение, а нижняя точка отсчёта: если A и B звучат '
-          + 'одинаково, то фон сейчас не делает ничего, и прибавлять его '
-          + 'бессмысленно — надо менять не громкость.',
-      params: gain(null) },
+    { id: 'noPad',
+      label: 'B — без фона',
+      note: 'Убран только фон — выдержанные аккорды. Расовый инструмент '
+          + 'остался. Если чище стало от этого, виноват фон.',
+      ...drop('pad') },
 
-    { id: 'loud',
-      label: 'C — фон +12 дБ',
-      note: 'Заведомо перебор, вчетверо громче нынешнего. Верхняя точка '
-          + 'отсчёта: если и C не отличается от A, значит фон замаскирован '
-          + 'мелодией и его не слышно ни на какой громкости.',
-      params: gain(12) },
+    { id: 'noHue',
+      label: 'C — без расового',
+      note: 'Убран только расовый инструмент. Фон остался. Если чище стало '
+          + 'от этого, виноват не фон, а он.',
+      ...drop('hue') },
 
-    { id: 'solo',
-      label: 'D — только фон',
-      aid: true,
-      note: 'Не вариант, а подсказка: мелодия, бас и барабаны убраны, остались '
-          + 'только фон и расовый инструмент. Послушай один раз, чтобы знать, '
-          + 'что именно искать в A, B и C.',
-      score(s) {
-        ['lead', 'counter', 'bass', 'perc'].forEach((k) => { s.tracks[k].length = 0; });
-      } },
+    { id: 'neither',
+      label: 'D — без обоих',
+      note: 'То, что ты выбрал в прошлый раз. Здесь — для сверки: если D '
+          + 'чище, чем лучший из B и C, значит мешают оба.',
+      ...drop('pad', 'hue') },
   ],
 };
