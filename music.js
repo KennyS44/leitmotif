@@ -204,6 +204,10 @@ function composeScore(p) {
   const MIN_NOTE = 0.16;
   const OVERLAP = 0.04;
 
+  /* C7. A soprano stops around C6; above this a melody stops reading as a tune
+     and starts reading as a whistle, whatever instrument is playing it. */
+  const TOP_NOTE = 96;
+
   const stack = Math.max(-12, Math.min(12, p.reg));
   const bassRoot = p.root + BASS + stack;
   const padRoot = p.root + PAD + stack;
@@ -457,6 +461,32 @@ function composeScore(p) {
      music and read as an extension stuck on rather than as this piece
      finishing. The band landing together on the tonic is the ending. */
   if (p.perc) tracks.perc.push({ t: endAt, kind: 'kick', vel: 0.58 + p.dyn * 0.22 });
+
+  /* Nothing was stopping the melody from climbing out of hearing.
+   *
+   * The register offset is bounded, and the bottom has a floor so the tune
+   * cannot sink into the chord — but the top had nothing at all. Two things
+   * push it up together: a motif that reaches down is *lifted* by however far
+   * it dips, and a character with wide leaps also reaches further up from wher-
+   * ever it was lifted to. Both grow with the same parameter, so they compound.
+   * Rolled at random, one theme in five put its melody above C7 and the worst
+   * reached A8 — piccolo territory, and painful with it. The span check never
+   * saw it: a melody can be perfectly narrow and still be far too high.
+   *
+   * The cure is a ceiling, applied to the whole band at once. Moving every part
+   * by the same octaves keeps every relationship the arrangement depends on —
+   * bass under pad under second voice under melody — and an octave is the one
+   * transposition the ear accepts as the same music. */
+  /* grace notes included: a grace note that squeaks squeaks */
+  if (tracks.lead.length) {
+    const top = Math.max(...tracks.lead.map((n) => n.midi));
+    if (top > TOP_NOTE) {
+      const drop = Math.ceil((top - TOP_NOTE) / 12) * 12;
+      Object.keys(tracks).forEach((k) => {
+        tracks[k].forEach((n) => { if (n.midi !== undefined) n.midi -= drop; });
+      });
+    }
+  }
 
   /* an abrupt ending gets almost no room afterwards — the silence is the point */
   const duration = endAt + hold + (abrupt ? 0.5 : 1.6);

@@ -331,7 +331,10 @@ const LOOKS = {
   scarred:    { label: 'Scarred',    rough: 0.30, attack: 0.65, dyn: +0.05, flag: 'brittle' },
   beautiful:  { label: 'Beautiful',  rev: +0.20, tension: -0.10, legato: 1.20 },
   huge:       { label: 'Huge',       reg: -12, tempo: -6, dyn: +0.15, rev: +0.10 },
-  small:      { label: 'Small',      reg: +12, tempo: +6, dyn: -0.10 },
+  /* Not the mirror of `huge`, on purpose. Height and depth are not symmetric to
+     the ear: an octave down reads as weight, an octave up reads as shrill long
+     before it reads as small. Named by Kenny as the one tag that squeaks. */
+  small:      { label: 'Small',      reg: +7,  tempo: +6, dyn: -0.10 },
   weathered:  { label: 'Weathered',  rough: 0.20, reg: -4, tempo: -4, flag: 'archaic' },
   elegant:    { label: 'Elegant',    orn: +0.20, legato: 1.25, dyn: -0.05 },
   filthy:     { label: 'Filthy',     rough: 0.35, rev: -0.10, tension: +0.10, flag: 'brittle' },

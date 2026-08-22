@@ -84,6 +84,11 @@ function watch(name, held, detail) {
     check(`${s.name}: melody has notes`, s.leadNotes > 20, `${s.leadNotes} notes`);
     check(`${s.name}: melody stays in a singable range`,
       s.highest - s.lowest <= 36, `${s.highest - s.lowest} semitones`);
+    /* The span check alone let a melody be perfectly narrow and still sit above
+       a piccolo. Kenny heard it as squeaking, on a rolled character, during the
+       blind test — the span was fine and the pitch was not. */
+    check(`${s.name}: melody does not squeak`, s.highest <= 96,
+      `top note ${s.highest}`);
   });
 
   const multi = scores.find((s) => s.name === 'Pip Underbough');
@@ -240,6 +245,29 @@ function watch(name, held, detail) {
       check(`${s.name}: the mode's colour note is actually sounded`, s.colourHeard);
     }
   });
+
+  /* The twelve presets are twelve chosen examples and will not find this: the
+     melody climbing out of hearing happened to strangers, and was heard only
+     because the blind test plays strangers. Two hundred rolls cost milliseconds
+     and cover what a hand-picked set cannot. */
+  const strangers = await page.evaluate(() => {
+    let top = -Infinity;
+    let bottom = Infinity;
+    let worst = null;
+    for (let i = 0; i < 200; i += 1) {
+      const ch = window.rollCharacter();
+      const s = window.Leitmotif.composeScore(window.Leitmotif.characterToParams(ch));
+      const hi = Math.max(...s.tracks.lead.map((n) => n.midi));
+      const lo = Math.min(...s.tracks.lead.map((n) => n.midi));
+      if (hi > top) { top = hi; worst = `${ch.race} ${ch.cls}, ${(ch.looks || []).join('+')}`; }
+      if (lo < bottom) bottom = lo;
+    }
+    return { top, bottom, worst };
+  });
+  check('no stranger squeaks', strangers.top <= 96,
+    `highest of 200 rolls is ${strangers.top} (${strangers.worst})`);
+  check('no stranger disappears downwards', strangers.bottom >= 36,
+    `lowest of 200 rolls is ${strangers.bottom}`);
 
   const cells = new Set(structure.map((s) => s.cell));
   check('races bring different rhythms', cells.size >= 5, `${cells.size} distinct cells`);

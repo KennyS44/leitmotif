@@ -52,6 +52,10 @@ const EN = {
   breakdown: (right, total, chance, first, second) =>
     `Chance alone gives about ${chance} of ${total}. You scored ${right}.`
     + ` First half ${first}, second half ${second}.`,
+  running: (right, total, runs, chance, pct) =>
+    `Across ${runs} run${runs === 1 ? '' : 's'}: ${right} of ${total}.`
+    + ` Guessing would give about ${chance}. The chance of scoring this well or`
+    + ` better by luck alone is ${pct}%.`,
   again: 'Run it again',
   back: '← back to the themes',
   fine: 'The characters are rolled fresh every round, never the twelve from the'
@@ -76,12 +80,26 @@ const RU = {
   breakdown: (right, total, chance, first, second) =>
     `Наугад вышло бы примерно ${chance} из ${total}. У тебя ${right}.`
     + ` Первая половина ${first}, вторая ${second}.`,
+  running: (right, total, runs, chance, pct) =>
+    `За ${runs} ${plural(runs, ['прогон', 'прогона', 'прогонов'])} всего:`
+    + ` ${right} из ${total}.`
+    + ` Наугад вышло бы примерно ${chance}. Вероятность набрать столько же или`
+    + ` больше по чистой удаче — ${pct}%.`,
   again: 'Ещё раз',
   back: '← к темам',
   fine: 'Персонажи бросаются заново каждый раунд — не двенадцать с главной'
       + ' страницы: их ты слышал слишком часто, и это был бы тест памяти, а не'
       + ' карты. Четыре листа всегда различаются классом и расой.',
 };
+
+/* Russian picks the form by the last digit: 1 прогон, 2 прогона, 5 прогонов. */
+function plural(n, forms) {
+  const last = n % 10;
+  const tens = n % 100;
+  if (last === 1 && tens !== 11) return forms[0];
+  if (last >= 2 && last <= 4 && (tens < 12 || tens > 14)) return forms[1];
+  return forms[2];
+}
 
 const t = () => (Sheet.lang === 'ru' ? RU : EN);
 
@@ -177,6 +195,42 @@ function answer(i) {
   el('next').focus();
 }
 
+/* ------------------------------------------------------------ the evidence
+ *
+ * Ten rounds is not enough to answer anything. Five out of ten against a chance
+ * of two and a half looks like a result and is not one: pure guessing reaches
+ * five or better about once in thirteen tries. Rather than demand a long sitting
+ * in one go, every run is added to a running total, so ten rounds whenever there
+ * is time accumulate into an answer.
+ *
+ * The number reported is the probability of scoring at least this well by
+ * guessing alone. Small means the map is audible; near a half means nothing has
+ * been shown either way. */
+function tallyLoad() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('leitmotif.blind') || '{}');
+    return { right: raw.right || 0, total: raw.total || 0, runs: raw.runs || 0 };
+  } catch (e) { return { right: 0, total: 0, runs: 0 }; }
+}
+
+function tallySave(tally) {
+  localStorage.setItem('leitmotif.blind', JSON.stringify(tally));
+}
+
+/* P(X >= hits) for X binomial(n, 1/OPTIONS), summed in logs so a long total
+   does not overflow a factorial */
+function byChance(hits, n) {
+  const p = 1 / OPTIONS;
+  const logs = [0];
+  for (let i = 1; i <= n; i += 1) logs[i] = logs[i - 1] + Math.log(i);
+  let sum = 0;
+  for (let k = hits; k <= n; k += 1) {
+    sum += Math.exp(logs[n] - logs[k] - logs[n - k]
+      + k * Math.log(p) + (n - k) * Math.log(1 - p));
+  }
+  return Math.min(1, sum);
+}
+
 function finish() {
   Player.stop();
   el('quiz').hidden = true;
@@ -187,6 +241,21 @@ function finish() {
   el('breakdown').textContent = t().breakdown(right, ROUNDS,
     Math.round(ROUNDS / OPTIONS), `${count(0, half)}/${half}`,
     `${count(half, ROUNDS)}/${ROUNDS - half}`);
+
+  /* counted once, however many times the result screen is redrawn */
+  if (!finish.counted) {
+    finish.counted = true;
+    const tally = tallyLoad();
+    tally.right += right;
+    tally.total += ROUNDS;
+    tally.runs += 1;
+    tallySave(tally);
+    finish.tally = tally;
+  }
+  const all = finish.tally;
+  el('running').textContent = t().running(all.right, all.total, all.runs,
+    (all.total / OPTIONS).toFixed(1),
+    (byChance(all.right, all.total) * 100).toFixed(1));
   el('log').innerHTML = log
     .map((x, i) => `<li class="${x.correct ? 'tag--right' : 'tag--wrong'}">`
       + `${i + 1}. ${x.sheet}</li>`).join('');

@@ -102,6 +102,41 @@ come from him.
 *How to apply:* clearing faults is preparation, not progress. When a round ends,
 say which question it moved, and if the answer is "none", say that instead.
 
+**First result, 2026-08-22: 5 of 10.** Chance is 2.5, so it is double chance —
+and it settles nothing. Pure guessing reaches five or better once in thirteen
+tries (p = 7.8%). Encouraging, not evidence.
+
+*What that means for the plan:* the answer is neither yes nor no yet, so nothing
+downstream is unblocked, and ten more rounds are worth more than any amount of
+further polishing. Runs now accumulate across sittings and the page reports the
+probability of the running total arising by luck. Twenty rounds at this rate
+would reach 1.4%, thirty would reach 0.3%.
+
+*This result belongs to the version before the register ceiling.* The run itself
+turned up the fault, so the sound changed immediately after it; the tally starts
+from the corrected version. Sound must not change in the middle of a run.
+
+**The melody had no ceiling, and one run of the test found it.** Kenny reported
+the `small` tag squeaking. It was worse than one tag: nothing bounded the
+absolute pitch of the melody at all. Rolled at random, one theme in five put its
+melody above C7 and the worst reached A8. Two things push it up at once — a
+motif that reaches down is *lifted* by however far it dips, and a wide-leap
+character also reaches further up from wherever it was lifted to — and both grow
+with the same parameter, so they compound.
+
+The 418 checks never saw it, because the only pitch check bounded the melody's
+*span*. A melody can be perfectly narrow and still be far too high.
+
+Fixed with a ceiling on the whole band at once — moving every part by the same
+octaves keeps bass under pad under melody, and an octave is the one
+transposition the ear hears as the same music. `small` also drops from +12 to
++7: height and depth are not symmetric, and an octave up reads as shrill long
+before it reads as small. Median top fell from 89 to 87, the 90th percentile
+from 103 to 94, the worst from 117 to 96.
+
+*Guarded by rolls, not by presets.* Twelve chosen examples could not have found
+this; the checks now roll two hundred strangers.
+
 **Rolled characters, not the presets.** The twelve on the front page have been
 heard so many times that recognising one measures memory. A stranger cannot be
 remembered, and it also tests what the rules do rather than what was chosen for
