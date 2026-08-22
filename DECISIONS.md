@@ -67,6 +67,19 @@ chord — one note in the whole theme.
 cadence.** Speaking in every bar turned "and also a rogue" into a rogue playing
 a different song.
 
+**And it answers in the lead's own instrument.** Its own timbre was tried, then
+quietened, and was still heard as a second tune running alongside the first.
+Quietening a voice does not stop it being a separate voice: after simultaneity,
+timbre is the strongest cue the ear splits streams by. *Cost, accepted:* a
+multiclass character no longer has an instrumental colour of its own.
+
+*Decided by ear on the A/B page, 2026-08-22* — the first question that page
+answered. Worth recording how it went: the timing measure had flagged Ogrim at
+0.67 and the ear agreed, but the fix that worked was not the one the number
+suggested. The number said "these parts move independently"; the cure was to
+stop them sounding like two players, not to stop them moving. A measure points
+at a symptom, and the symptom is not the mechanism.
+
 **Every theme is levelled to the same peak.** A quiet character should sound
 quiet in its own shape — soft attacks, a thinner band — not by arriving at a
 lower volume, which reads as a worse recording rather than as a quieter person.
@@ -120,11 +133,7 @@ code. That is why the player shows the whole length and can be moved through.
 
 ## Open
 
-**Multiclass may still split into two tunes.** Measured: Ogrim's second class
-overlaps the melody while moving independently 67% of the time, Pip's 22%. The
-second class was quietened last round, not removed — and quietening a voice that
-keeps its own timbre does not stop it being a separate voice.
-
-On the A/B page now: keep it as it is, give it the lead's instrument, or drop it
-altogether. The third is a measurement, not a proposal — if nothing is missed,
-it is not needed.
+**How far the background should come up.** Kenny hears the pad and the race's
+instrument, but has to listen for them. They sit about 6 dB under the melody.
+On the A/B page now: +2, +4 and +6 dB, both parts raised together. Only the
+amount differs between the versions, so the answer is one letter.

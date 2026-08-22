@@ -440,7 +440,14 @@ function characterToParams(ch) {
   p.lead = cls.lead;
   p.pad = cls.pad;
   p.perc = (sub && sub.perc) || cls.perc || (second && second.perc) || null;
-  p.counter = second && second.lead !== cls.lead ? second.lead : null;
+  /* The second class answers in the lead's own instrument, not in one of its
+     own. Its own timbre was tried, quietened, and still heard as a second tune
+     running beside the first — quietening a voice does not stop it being a
+     separate voice, and timbre is what the ear splits streams by. Answering in
+     the same instrument keeps the "and also a rogue" as a reply rather than a
+     rival. The cost, accepted: a multiclass no longer has a colour of its own.
+     Decided by ear on the A/B page, 2026-08-22. */
+  p.counter = second ? cls.lead : null;
   p.branchMotif = second ? drawMotif(second.family, (p.seed ^ 0x51ed270b) >>> 0) : null;
   /* A race colour that happens to be the class's own lead adds nothing — a
      dwarf cleric would be organ answered by organ. Fall back to the first

@@ -44,8 +44,17 @@ const round = (v, n) => +v.toFixed(n);
  *             sounds. A held chord under a melody is a floor, not a rival, so
  *             rivalry is scaled by how much this part moves next to the melody.
  *
+ *   timbre  — after simultaneity, the strongest thing the ear splits streams by
+ *             is instrument. A part in the melody's own instrument is heard as
+ *             the melody thickening; the same notes on a different instrument
+ *             are heard as somebody else. Not abolished, only reduced — two
+ *             violins can still be heard as two lines — so a shared timbre
+ *             counts for a fraction rather than for nothing.
+ *
  * 0 means the part belongs to the tune. 1 means it is a second tune. */
-function apart(score) {
+const SAME_VOICE = 0.4;
+
+function apart(score, p) {
   const lead = score.tracks.lead.filter((n) => !n.grace);
   if (!lead.length) return { counter: 0, hue: 0, pad: 0, worst: 0 };
   const onsets = lead.map((n) => n.t);
@@ -61,7 +70,11 @@ function apart(score) {
     if (!tr.length || !leadRate) { out[k] = 0; return; }
     const rivalry = tr.filter((n) => !withLead(n.t) && overlaps(n)).length / tr.length;
     const moving = Math.min(1, (tr.length / bars) / leadRate);
-    out[k] = round(rivalry * moving, 2);
+    const voice = p && (p[k] || p.lead);
+    /* without the parameters the timbre is unknown, and the conservative guess
+       is that it differs — an unmeasured cue is not a cue in our favour */
+    const timbre = p && voice === p.lead ? SAME_VOICE : 1;
+    out[k] = round(rivalry * moving * timbre, 2);
   });
   out.worst = round(Math.max(out.counter, out.hue, out.pad), 2);
   return out;
@@ -148,10 +161,11 @@ function wobble(buffer) {
   return level ? round(std(band) / level, 3) : 0;
 }
 
-/* Everything at once. `buffer` is optional — without it the audio measure is
-   left out, which is what the fast level of the checks does. */
-function report(score, buffer) {
-  const a = apart(score);
+/* Everything at once. `p` supplies the instruments, `buffer` the samples —
+   without the buffer the audio measure is left out, which is what the fast
+   level of the checks does. */
+function report(score, p, buffer) {
+  const a = apart(score, p);
   const m = mechanical(score);
   const t = torn(score);
   const out = {

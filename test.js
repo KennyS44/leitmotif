@@ -356,14 +356,14 @@ function watch(name, held, detail) {
   const felt = await page.evaluate(() => window.PRESETS.map((ch) => {
     const p = window.Leitmotif.characterToParams(ch);
     const s = window.Leitmotif.composeScore(p);
-    return { name: ch.name, ...window.Metrics.report(s) };
+    return { name: ch.name, ...window.Metrics.report(s, p) };
   }));
 
-  /* Where the answer is not in yet. Ogrim's second class still moves against
-     the melody two thirds of the time — the complaint that started this, and
-     the question the A/B page is asking this round. Recorded at what it
-     measures today, so it cannot quietly get worse while it waits. */
-  const OPEN = { 'Ogrim Stoneback': 0.7 };
+  /* Nothing open at the moment. Ogrim's second voice was the last entry: it now
+     answers in the lead's own instrument, decided by ear on the A/B page, and
+     the timing measure that flagged it reads it as part of the tune once the
+     shared timbre is taken into account. */
+  const OPEN = {};
 
   felt.forEach((f) => {
     /* «несколько разных мелодий». The second voice and the race's instrument
