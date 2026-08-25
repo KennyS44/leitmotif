@@ -21,80 +21,143 @@
  *
  * ---
  *
- * Settled by ear, twice: the pad is what makes the music less clean, and the
- * race's instrument is not. Measurement had predicted exactly that, and now
- * says why — the pad adds about a decibel between 240 and 480 Hz and nothing
- * anywhere else. That band is where sound piles up without being heard as
- * anything, so a part that sits in it continuously is a veil rather than a
- * voice.
+ * THIS ROUND: does a genre make the class audible?
  *
- * But the checks then named what the pad was carrying, and simply deleting it
- * is not available:
+ * Both diagnostics came back at chance — class only 2/10, race only 2/10. The
+ * measurements said why, and it is not that the arrangement is poor. A class
+ * signs itself two ways, and neither can be read on one hearing:
  *
- *   - the final chord falls from four to seven parts down to two, on every
- *     character. The pad *is* the chord in "the ending lands together".
- *   - three characters stop growing at all — 3 > 3 > 3 > 3 — because the pad
- *     was the only part entering at the build phrase.
+ *   - statistically — the family of intervals it is allowed to move by, its
+ *     contour, how far it reaches. Nobody extracts a distribution from forty
+ *     seconds heard once.
+ *   - arbitrarily — this instrument means wizard. An arbitrary code has to be
+ *     taught before it can be recognised, and the test teaches nothing.
  *
- * So the fault is not that the pad exists. It is that it sounds all the way
- * through, in the worst band to sound all the way through in. The project
- * already believes parts should enter and leave; the pad is the one that never
- * does. Two ways out, and B stays on the page as the thing they have to beat.
+ * A genre is the one kind of signature that is neither: gross, categorical, and
+ * already learned by every listener years before they arrive here. Nobody has
+ * to be told what a baroque keyboard piece or a swung violin sounds like.
+ *
+ * So three classes are dressed in a genre, and the question is only whether the
+ * class is audible from the first seconds. Styles are Kenny's to choose — these
+ * three are the ones I proposed and they are a first draft, not a decision. Any
+ * of them can be swapped for a word.
+ *
+ *   wizard    → baroque      Nymeria Sylvarion
+ *   barbarian → taiko        Grukk Skullsplitter
+ *   bard      → gypsy jazz   Fennick Sparrowquill
+ *
+ * Pick one of those three in the character list. On any other character the
+ * genre versions do nothing and B sounds exactly like A — that is expected,
+ * only three classes are wired.
+ *
+ * What a genre is allowed to touch, and why. It takes instrumentation, groove,
+ * tempo, articulation and room — the layers a class already owned or nobody
+ * did. It does NOT take the race's rhythmic cell or the alignment's mode: those
+ * are the only things race and alignment still say, and a genre that ate them
+ * would raise this score by making the other fields inaudible, which is how a
+ * test flatters itself.
  */
 
-/* keep the pad only where the arrangement actually needs a chord: the start of
-   each phrase, and the final chord */
-const asEvents = {
-  score(s) {
-    const phrase = s.barsPerPhrase * s.barDur;
-    s.tracks.pad = s.tracks.pad.filter((n) => {
-      const intoPhrase = n.t - Math.round(n.t / phrase) * phrase;
-      return Math.abs(intoPhrase) < 0.02 || Math.abs(n.t - s.endAt) < 0.02;
-    });
+const GENRES = {
+
+  /* Baroque. No kit at all is half the signal — a plucked keyboard over a
+     chamber organ, running even notes, trills on the accents, and a cadence
+     that lands like a door closing. Straight: not one swung note. */
+  wizard: {
+    label: 'барокко',
+    lead: 'lute', pad: 'organ', perc: null,
+    tempo: 108, swing: 0, cellMod: +0.35,
+    orn: 0.55, sync: 0.05, cadence: 0.95, tension: 0.10,
+    legato: 0.75, attack: 0.95, rev: 0.35, rough: 0, drone: false,
+  },
+
+  /* Taiko. The drums are the piece and the melody gets out of their way: slow,
+     sparse, sustained, over a drone, in a big room.
+     *
+     * The lead is a bamboo whistle rather than the barbarian's own horn. Not
+     * decoration: the class already plays horn over a heavy kit, so keeping it
+     * left B differing from A by tempo alone — a genre nobody could hear. A
+     * flute over big drums is the pairing that names this music at a stroke. */
+  barbarian: {
+    label: 'тайко',
+    lead: 'whistle', pad: 'dark', perc: 'heavy',
+    tempo: 72, swing: 0, cellMod: -0.35,
+    orn: 0.10, sync: 0.05, cadence: 0.50, tension: 0.20,
+    legato: 1.50, attack: 0.60, rev: 0.55, rough: 0.05, drone: true,
+    reg: -10, dyn: 0.80,
+  },
+
+  /* Gypsy jazz. Swing is the whole tell, so it is heavy. A violin over a
+     plucked comp, brushes rather than a kit, fast, dry and close, with enough
+     tension in the harmony for sixths and ninths. */
+  bard: {
+    label: 'цыганский джаз',
+    lead: 'fiddle', pad: 'lute', perc: 'tick',
+    tempo: 168, swing: 0.60, cellMod: +0.40,
+    orn: 0.45, sync: 0.55, cadence: 0.60, tension: 0.45,
+    legato: 0.70, attack: 0.85, rev: 0.15, rough: 0, drone: false,
+    reg: +2, dyn: 0.66,
   },
 };
 
-/* lift the pad as far towards the melody as the stacking rule allows — out of
-   the veil band, still underneath the tune */
-const lifted = {
-  score(s) {
-    if (!s.tracks.pad.length || !s.tracks.lead.length) return;
-    const leadBottom = Math.min(...s.tracks.lead.map((n) => n.midi));
-    const padTop = Math.max(...s.tracks.pad.map((n) => n.midi));
-    const shift = Math.min(12, leadBottom - 1 - padTop);
-    if (shift <= 0) return;
-    s.tracks.pad.forEach((n) => { n.midi += shift; });
+/* The genre is set, not added: it arrives after the class, the race, the
+   alignment and the tags have all had their say, and the point of this round is
+   to hear the genre rather than the average of the genre and everything else.
+   If that turns out to be too blunt it is the next thing to soften — but a
+   first look at an idea should not be the version that hedges. */
+function dress(p, ch) {
+  const g = GENRES[ch.cls];
+  if (!g) return null;
+  Object.keys(g).forEach((k) => { if (k !== 'label') p[k] = g[k]; });
+  return g;
+}
+
+const genre = {
+  params(p, ch) { dress(p, ch); },
+};
+
+/* The same genre on a character stripped of its traits and looks. Not a
+   candidate — a deliberate extreme, to hear how much of the theme the dressing
+   is actually moving. A single tag swap already rewrites most of the notes, and
+   whatever swamps the class signature now will swamp a genre too. If B and C
+   sound like different pieces of music, the tags have to be capped before any
+   genre can be judged. */
+const bare = {
+  aid: true,
+  params(p, ch) {
+    const stripped = window.Mapping.characterToParams({ ...ch, traits: [], looks: [] });
+    Object.keys(p).forEach((k) => delete p[k]);
+    Object.assign(p, stripped);
+    dress(p, ch);
   },
 };
 
 window.VARIANTS = {
 
-  on: 'Dame Ilsabet Cross',
+  on: 'Nymeria Sylvarion',
 
   list: [
     { id: 'now',
       label: 'A — как сейчас',
-      note: 'Фон звучит всю тему. Версия с главной страницы.' },
+      note: 'Версия с главной страницы. Класс подписан семейством интервалов '
+          + 'и одним инструментом — обе подписи требуют, чтобы их сначала '
+          + 'выучили. Оба диагностических теста дали 2/10 при шансе 2.5.' },
 
-    { id: 'noPad',
-      label: 'B — без фона',
-      note: 'Твой прошлый выбор. Остаётся на странице как то, что новым '
-          + 'версиям надо превзойти — но ценой: финальный аккорд здесь '
-          + 'берут всего две партии вместо семи.',
-      score(s) { s.tracks.pad.length = 0; } },
+    { id: 'genre',
+      label: 'B — жанр',
+      note: 'Класс одет в жанр: инструменты, грув, темп, артикуляция, '
+          + 'помещение. Ячейка расы и лад мировоззрения не тронуты — иначе '
+          + 'тест польстил бы себе, сделав остальные поля неслышными. '
+          + 'Вопрос один: слышно ли с первых секунд, что это за класс. '
+          + 'Работает на Nymeria (маг), Grukk (варвар), Fennick (бард).',
+      ...genre },
 
-    { id: 'events',
-      label: 'C — фон только на опорах',
-      note: 'Фон звучит на начале каждой фразы и на финальном аккорде, '
-          + 'а между ними молчит. Пелена не успевает накопиться, но '
-          + 'концовка и нарастание остаются на месте.',
-      ...asEvents },
-
-    { id: 'lifted',
-      label: 'D — фон поднят под мелодию',
-      note: 'Фон звучит так же непрерывно, но переставлен вверх — из мутной '
-          + 'полосы, ближе к мелодии, всё ещё под ней. Проверка того, что '
-          + 'мешала именно полоса, а не сама непрерывность.',
-      ...lifted },
+    { id: 'bare',
+      label: 'C — жанр без тегов',
+      note: 'Тот же жанр, но у персонажа убраны traits и looks. Не кандидат, '
+          + 'а замер: если B и C звучат как разные пьесы, значит «одежда» '
+          + 'забивает жанр так же, как забивала класс, и её придётся '
+          + 'ограничить до того, как жанры вообще можно будет судить.',
+      ...bare },
   ],
 };

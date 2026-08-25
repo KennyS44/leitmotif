@@ -46,10 +46,17 @@ function sheetLine() {
   return `${ch.name} — ${RACES[ch.race].label} ${cls} · ${ALIGNMENTS[ch.alignment].label}`;
 }
 
+/* The armed version's parameters, not the character's. A variant that changes
+   the instruments used to be described by this line as though it had not: the
+   page said "harp, glass" while a lute and an organ were playing. A label that
+   contradicts the sound is worse than no label, because the ear is being asked
+   to judge exactly these things. */
 function whyLine() {
-  const p = characterToParams(ch);
+  const { p } = scoreFor(ch, variants[pick]);
   const parts = [p.lead, p.pad, p.counter, p.hue].filter(Boolean).join(', ');
-  return `${parts} · ${p.modeName} · ${p.beats} beats at ${p.tempo} bpm`;
+  const kit = p.perc ? p.perc : 'no kit';
+  const swung = p.swing ? `, swung ${p.swing}` : '';
+  return `${parts} · ${kit} · ${p.modeName} · ${p.beats} beats at ${Math.round(p.tempo)} bpm${swung}`;
 }
 
 /* ---------------------------------------------------------------- versions */
@@ -179,6 +186,7 @@ function choose(i) {
   if (i === pick || !variants[i]) return;
   pick = i;
   drawVersions();
+  el('why').textContent = whyLine();
   const dur = scoreFor(ch, variants[i]).score.duration;
   ui.rescale(dur);
   if (buffers[i]) {
