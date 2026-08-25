@@ -259,6 +259,42 @@ and the roll turns out to share it.
 Not fixed yet: changing the distribution changes what the test samples, and the
 headline tally accumulates across sittings. It is a decision, not a typo.
 
+**Both diagnostics came back at chance, 2026-08-25. Class only 2/10, race only
+2/10** — chance is 2.5, and P(≥2 of 10) is 76%, so neither result is
+distinguishable from guessing. Kenny's own reading: earlier scores came from the
+whole sheet at once, not from any one field. The measurements agree with him.
+
+*What was measured, and what it does and does not show.* Swapping one field and
+comparing note events (track, onset, pitch) gives: class 0.98, race 0.96, traits
+0.96, looks 0.94, alignment 0.55, seed alone 0.20 — where 1 means no shared
+events. **These numbers are brittle and must not be read as loudness of effect:**
+a global shift of tempo or register moves every event and scores near 1 while
+sounding almost the same. The ranking is informative, the magnitudes are not.
+A perceptual measure would need features — tempo, register, density, brightness —
+not note identity.
+
+*What is solid.* Over 30 rolls of one class with the class held fixed, the motif
+comes out **12 to 25 distinct** — essentially never twice the same — while the
+lead instrument is **always the same one**. That is not a fault: a class owns a
+*family* of motifs by design, and the comment saying so is explicit about why a
+single stored melody per class would make the generator feel like a menu.
+
+*So why is it at chance.* The class's signature is real but it is either
+**statistical** (allowed intervals, contour, reach) or **arbitrary** (this
+instrument means wizard). A statistical signature cannot be extracted from one
+hearing of forty seconds. An arbitrary one has to be learned first, and the test
+teaches nothing. An untrained listener scoring at chance is therefore the
+*expected* outcome of the current design, not evidence that the arrangement is
+poor.
+
+*Why this argues for the genre plan.* A genre is the opposite of both: gross,
+categorical, and already learned by every listener before they arrive. It is the
+one kind of signature that needs no training round.
+
+*And a prerequisite it exposes.* Whatever swamps the class signature now will
+swamp a genre too. Before the genre work can be judged, the dressing has to stop
+rewriting the theme — measured with a perceptual yardstick, not this one.
+
 
 **Which part of the background is in the way.**
 
