@@ -116,19 +116,47 @@ const genre = {
   params(p, ch) { dress(p, ch); },
 };
 
-/* The same genre on a character stripped of its traits and looks. Not a
-   candidate — a deliberate extreme, to hear how much of the theme the dressing
-   is actually moving. A single tag swap already rewrites most of the notes, and
-   whatever swamps the class signature now will swamp a genre too. If B and C
-   sound like different pieces of music, the tags have to be capped before any
-   genre can be judged. */
-const bare = {
-  aid: true,
+/* Flaw in the first version of this round, found by measuring rather than by
+   listening, and recorded so it is not repeated.
+ *
+ * C was meant to show how much the dressing moves a theme: the same genre on a
+ * character stripped of its traits and looks. But the genre SETS register,
+ * roughness and tension outright — the very numbers the tags move — so on
+ * Grukk and Fennick the two versions came out with identical values and "no
+ * difference" was guaranteed by construction, not observed. Only Nymeria
+ * differed, and only because the baroque bundle happens not to set `reg`.
+ *
+ * An experiment that can only return one answer is not an experiment. C now
+ * puts the tags back on top of the genre instead of removing them: the genre
+ * decides the instruments, the groove and the room, and the character's own
+ * tags bend the numbers from there. That is a real test of whether a genre
+ * survives its dressing — and it is also the shape the genre layer would
+ * probably take for real. */
+const TAG_KEYS = ['tempo', 'reg', 'dyn', 'cellMod', 'leap', 'orn', 'sync',
+                  'tension', 'cadence', 'rough', 'rev', 'rise'];
+
+const dressed = {
   params(p, ch) {
-    const stripped = window.Mapping.characterToParams({ ...ch, traits: [], looks: [] });
-    Object.keys(p).forEach((k) => delete p[k]);
-    Object.assign(p, stripped);
-    dress(p, ch);
+    const withTags = window.Mapping.characterToParams(ch);
+    const without = window.Mapping.characterToParams({ ...ch, traits: [], looks: [] });
+    if (!dress(p, ch)) return;
+    TAG_KEYS.forEach((k) => { p[k] += withTags[k] - without[k]; });
+  },
+};
+
+/* Taiko with the barbarian's own horn kept, instead of the bamboo whistle.
+ *
+ * B bundled two changes at once — the genre and a new lead — which is the
+ * mistake this project has already recorded once, over the pad and the race's
+ * instrument. Kenny heard "a cross between a druid and a bard", and the whistle
+ * is the obvious suspect: it was brought in only because the barbarian's own
+ * horn over a heavy kit left B differing from A by tempo alone. This separates
+ * the two, so the answer is a letter rather than an argument. On anything but
+ * the barbarian it is the same as B. */
+const withHorn = {
+  params(p, ch) {
+    if (!dress(p, ch)) return;
+    if (ch.cls === 'barbarian') p.lead = 'horn';
   },
 };
 
@@ -152,12 +180,21 @@ window.VARIANTS = {
           + 'Работает на Nymeria (маг), Grukk (варвар), Fennick (бард).',
       ...genre },
 
-    { id: 'bare',
-      label: 'C — жанр без тегов',
-      note: 'Тот же жанр, но у персонажа убраны traits и looks. Не кандидат, '
-          + 'а замер: если B и C звучат как разные пьесы, значит «одежда» '
-          + 'забивает жанр так же, как забивала класс, и её придётся '
-          + 'ограничить до того, как жанры вообще можно будет судить.',
-      ...bare },
+    { id: 'dressed',
+      label: 'C — жанр, теги поверх',
+      note: 'Жанр задаёт инструменты, грув и помещение, а теги персонажа '
+          + 'гнут числа поверх него. Прошлая версия C снимала теги — но жанр '
+          + 'и так перезаписывал ровно те числа, которые теги двигают, так что '
+          + 'на Grukk и Fennick «нет разницы» было гарантировано устройством '
+          + 'опыта, а не услышано. Вопрос: переживает ли жанр свою одежду.',
+      ...dressed },
+
+    { id: 'horn',
+      label: 'D — тайко с хорном',
+      note: 'Только для Grukk. В B жанр пришёл вместе с новым лидом — бамбуковой '
+          + 'флейтой, — то есть менялись две вещи сразу. Здесь тайко играет '
+          + 'своим хорном варвара. Если «помесь друида и барда» уйдёт, виновата '
+          + 'была флейта, а не жанр. На остальных звучит как B.',
+      ...withHorn },
   ],
 };
