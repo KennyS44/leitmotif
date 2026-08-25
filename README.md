@@ -129,6 +129,13 @@ to be audible too, and rigging them would flatter the result.
 Everything else in this repository — every fix to the arrangement, every round
 on the A/B page — is worth exactly what this test says it is worth.
 
+Two **diagnostic** modes sit beside it. Because the headline round varies class
+and race together, a wrong pick differs from the truth in both and cannot say
+which went unheard. *Class only* and *Race only* offer one character with a
+single field swapped and everything else held still, so each field is asked
+about on its own. Their tallies are kept apart from the headline one: they ask
+an easier question, and mixing them in would flatter the number that matters.
+
 ## Not here yet
 
 Character builder, tag picker, shareable links, link previews, accounts, feed,

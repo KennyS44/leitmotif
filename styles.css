@@ -270,16 +270,30 @@ button:disabled:hover { border-color: var(--line); color: var(--text); }
   justify-content: flex-end;
   margin-bottom: 8px;
 }
-.lang button {
+.lang button,
+.mode button {
   min-height: 44px;
   min-width: 56px;
   padding: 8px 12px;
   font-size: 14px;
   letter-spacing: 0.06em;
 }
-.lang button[aria-pressed="true"] {
+.lang button[aria-pressed="true"],
+.mode button[aria-pressed="true"] {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* What a round varies. It sits with the lede rather than beside the language
+   switch, because it changes what the score means and not how the page reads.
+   It carries its own class rather than borrowing .lang: the language switch
+   sets aria-pressed on every `.lang button` it can find, and a shared class had
+   it quietly unpressing the mode. Wraps at 390px instead of scrolling. */
+.mode {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin: 16px 0 0;
 }
 
 .foot__fine {

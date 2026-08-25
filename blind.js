@@ -58,9 +58,18 @@ const EN = {
     + ` better by luck alone is ${pct}%.`,
   again: 'Run it again',
   back: '← back to the themes',
-  fine: 'The characters are rolled fresh every round, never the twelve from the'
-      + ' front page — those have been heard too often to be a test of anything'
-      + ' but memory. The four sheets always differ in class and in race.',
+  modes: { both: 'Class + race', class: 'Class only', race: 'Race only' },
+  fine: {
+    both: 'The characters are rolled fresh every round, never the twelve from the'
+        + ' front page — those have been heard too often to be a test of anything'
+        + ' but memory. The four sheets always differ in class and in race.',
+    class: 'Diagnostic. The four sheets are one character with the class swapped —'
+        + ' same race, same alignment, same tags, no subclass and no second class.'
+        + ' It asks one thing: is the class alone audible?',
+    race: 'Diagnostic. The four sheets are one character with the race swapped,'
+        + ' everything else held still. It asks one thing: is the race alone'
+        + ' audible?',
+  },
 };
 
 const RU = {
@@ -87,9 +96,18 @@ const RU = {
     + ` больше по чистой удаче — ${pct}%.`,
   again: 'Ещё раз',
   back: '← к темам',
-  fine: 'Персонажи бросаются заново каждый раунд — не двенадцать с главной'
-      + ' страницы: их ты слышал слишком часто, и это был бы тест памяти, а не'
-      + ' карты. Четыре листа всегда различаются классом и расой.',
+  modes: { both: 'Класс + раса', class: 'Только класс', race: 'Только раса' },
+  fine: {
+    both: 'Персонажи бросаются заново каждый раунд — не двенадцать с главной'
+        + ' страницы: их ты слышал слишком часто, и это был бы тест памяти, а не'
+        + ' карты. Четыре листа всегда различаются классом и расой.',
+    class: 'Диагностика. Четыре листа — это один персонаж с подменённым классом:'
+        + ' та же раса, то же мировоззрение, те же теги, без подкласса и без'
+        + ' второго класса. Вопрос ровно один: слышен ли класс сам по себе?',
+    race: 'Диагностика. Четыре листа — это один персонаж с подменённой расой,'
+        + ' всё остальное остаётся неподвижным. Вопрос ровно один: слышна ли раса'
+        + ' сама по себе?',
+  },
 };
 
 /* Russian picks the form by the last digit: 1 прогон, 2 прогона, 5 прогонов. */
@@ -107,7 +125,9 @@ const t = () => (Sheet.lang === 'ru' ? RU : EN);
 
 let round = 0;
 let right = 0;
-const log = [];          /* { correct: bool, sheet: string } */
+let mode = 'both';       /* both | class | race — see drawOne */
+const log = [];          /* { correct, sheet, truth, picked } — sheets kept whole
+                            so a later question can be asked of an earlier run */
 let question = null;     /* { sheets, answer, buffer } */
 let queued = null;       /* the next one, rendered while this one is answered */
 let answered = false;
@@ -118,7 +138,7 @@ const ui = Player.transport(el('quiz'), 1, {
 
 /* Four strangers who cannot be told apart by elimination: no repeated class and
    no repeated race. Everything else is left to the dice. */
-function draw() {
+function drawBoth() {
   const sheets = [];
   const classes = new Set();
   const races = new Set();
@@ -133,6 +153,51 @@ function draw() {
   }
   return { sheets, answer: Math.floor(Math.random() * sheets.length) };
 }
+
+/* A diagnostic round: four sheets identical but for the one field under test.
+ *
+ * The headline test varies class and race together, so a wrong pick differs
+ * from the truth in both fields at once and cannot say which one went unheard.
+ * That is fine for asking "is the map audible" and useless for asking "which
+ * half of it is audible". Holding everything else still is the only way to put
+ * the question to one field.
+ *
+ * The class rounds carry no subclass and no second class. A bare class is the
+ * commonest character there is, and it is also the only way to hear what the
+ * class itself sounds like rather than what a pair of them sounds like. */
+function drawOne(field) {
+  const M = window.Mapping;
+  const base = window.rollCharacter();
+  if (field === 'cls') { base.sub = null; base.second = undefined; }
+
+  const pool = keys(field === 'cls' ? M.CLASSES : M.RACES)
+    .filter((v) => v !== base[field]);
+  const chosen = [base[field]];
+  while (chosen.length < OPTIONS && pool.length) {
+    chosen.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+  }
+
+  /* every sheet needs its own name, or the line-up reads as one character;
+     the names come from throwaway rolls and touch nothing that sounds */
+  const sheets = chosen.map((v) => ({ ...base, [field]: v,
+    name: window.rollCharacter().name }));
+
+  /* the truth is built first; it must not always be offered first */
+  const answer = Math.floor(Math.random() * sheets.length);
+  [sheets[0], sheets[answer]] = [sheets[answer], sheets[0]];
+  return { sheets, answer };
+}
+
+function keys(o) { return Object.keys(o); }
+
+function draw() {
+  return mode === 'both' ? drawBoth() : drawOne(mode === 'class' ? 'cls' : 'race');
+}
+
+/* A read-only way in for the checks. A diagnostic decides which field the
+   mapping gets rebuilt around, so "the four sheets differ in one field only"
+   has to be something a test can assert rather than something I claim. */
+window.__blind = () => ({ mode, question, log });
 
 async function build() {
   const q = draw();
@@ -186,7 +251,12 @@ function answer(i) {
   question.picked = i;
   const ok = i === question.answer;
   if (ok) right += 1;
-  log.push({ correct: ok, sheet: Sheet.line(question.sheets[question.answer]) });
+  log.push({
+    correct: ok,
+    sheet: Sheet.line(question.sheets[question.answer]),
+    truth: question.sheets[question.answer],
+    picked: question.sheets[i],
+  });
   el('verdict').textContent = ok ? t().right : t().wrong;
   el('verdict').className = `verdict ${ok ? 'verdict--right' : 'verdict--wrong'}`;
   drawOptions(true);
@@ -206,15 +276,21 @@ function answer(i) {
  * The number reported is the probability of scoring at least this well by
  * guessing alone. Small means the map is audible; near a half means nothing has
  * been shown either way. */
+/* Each mode keeps its own total. A diagnostic asks an easier question — one
+   field varying instead of two — so folding its rounds into the headline tally
+   would inflate the one number this repository exists to produce. The headline
+   keeps the original key, so the runs already recorded are not lost. */
+const tallyKey = () => (mode === 'both' ? 'leitmotif.blind' : `leitmotif.blind.${mode}`);
+
 function tallyLoad() {
   try {
-    const raw = JSON.parse(localStorage.getItem('leitmotif.blind') || '{}');
+    const raw = JSON.parse(localStorage.getItem(tallyKey()) || '{}');
     return { right: raw.right || 0, total: raw.total || 0, runs: raw.runs || 0 };
   } catch (e) { return { right: 0, total: 0, runs: 0 }; }
 }
 
 function tallySave(tally) {
-  localStorage.setItem('leitmotif.blind', JSON.stringify(tally));
+  localStorage.setItem(tallyKey(), JSON.stringify(tally));
 }
 
 /* P(X >= hits) for X binomial(n, 1/OPTIONS), summed in logs so a long total
@@ -290,12 +366,26 @@ document.querySelector('.lang').addEventListener('click', (e) => {
   if (!el('result').hidden) finish(); else drawOptions(answered);
 });
 
+/* Changing what a round varies changes what the score means, so the run in
+   progress is abandoned rather than continued under a new rule. */
+el('mode').addEventListener('click', (e) => {
+  const pick = e.target.closest('button');
+  if (!pick || pick.dataset.mode === mode) return;
+  mode = pick.dataset.mode;
+  window.location.hash = mode === 'both' ? '' : mode;
+  window.location.reload();
+});
+
 function words() {
   document.documentElement.lang = Sheet.lang;
   el('kicker').textContent = t().kicker;
   el('lede').textContent = t().lede;
   el('back').textContent = t().back;
-  el('fine').textContent = t().fine;
+  el('fine').textContent = t().fine[mode];
+  [...document.querySelectorAll('#mode button')].forEach((b) => {
+    b.textContent = t().modes[b.dataset.mode];
+    b.setAttribute('aria-pressed', String(b.dataset.mode === mode));
+  });
   el('ask').textContent = t().ask;
   el('play').textContent = Player.isLive(ui) ? t().stop : t().play;
   el('next').textContent = t().next;
@@ -305,6 +395,9 @@ function words() {
     b.setAttribute('aria-pressed', String(b.dataset.lang === Sheet.lang));
   });
 }
+
+const fromHash = window.location.hash.replace('#', '');
+if (fromHash === 'class' || fromHash === 'race') mode = fromHash;
 
 words();
 nextRound();

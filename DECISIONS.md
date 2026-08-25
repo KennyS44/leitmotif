@@ -214,9 +214,51 @@ timeline, and the answer is a letter.
 **Timestamps.** "The flute tears at 0:22" names a bar, and a bar names a line of
 code. That is why the player shows the whole length and can be moved through.
 
+**A test that varies two fields cannot say which one was heard.** The headline
+round differs in class *and* race by construction, so a wrong pick differs from
+the truth in both. It answers "is the map audible" and it cannot answer "which
+half of it is audible" — and the second question is the one that decides where
+the mapping gets rebuilt.
+
+*My error, recorded so it is not repeated:* I proposed logging which option was
+picked, and Kenny agreed to it, before I had read `draw()` closely enough to see
+that the pick could not carry the answer. Reading the code came after proposing
+the plan; it should have come first.
+
+`blind.html` now has three modes. **Class only** and **Race only** are
+diagnostics: four sheets that are one character with a single field swapped,
+everything else held still. The class rounds carry no subclass and no second
+class — a bare class is the commonest character there is, and it is the only way
+to hear a class rather than a pair of them. **Each mode keeps its own tally**,
+because a diagnostic asks an easier question and folding it into the headline
+total would inflate the one number this repository exists to produce.
+
+Whichever diagnostic scores worse names the weaker channel, and that decides
+whether the instruments stay with the class or move to the race.
+
+*Guarded:* `.dev/verify-blind.js` asserts that exactly one field varies. The
+first version of the selector borrowed the language switch's class and was
+silently un-pressed by it on every draw — a screenshot caught it, no check did.
+There is a check now.
+
 ---
 
 ## Open
+
+**Four classes are almost never heard alone.** `rollCharacter` gives a subclass
+at 55% and a second class at 20%, leaving a quarter of characters bare. But
+`fighter`, `monk`, `sorcerer` and `artificer` have no subclasses defined, so the
+first branch cannot fire and **75% of them roll a second class** instead. Those
+four are heard fused with another class three times out of four, in the headline
+test and in any future genre round alike.
+
+Found while answering Kenny's observation that I kept assuming a multiclass or a
+subclass when a character may have neither. He was right about the assumption,
+and the roll turns out to share it.
+
+Not fixed yet: changing the distribution changes what the test samples, and the
+headline tally accumulates across sittings. It is a decision, not a typo.
+
 
 **Which part of the background is in the way.**
 
