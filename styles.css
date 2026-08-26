@@ -464,3 +464,30 @@ button:disabled:hover { border-color: var(--line); color: var(--text); }
 .btn--roll:hover { background: var(--accent-soft); }
 
 .card--rolled { border-color: var(--accent); }
+
+/* ------------------------------------------------- the arrangement diagrams
+   Drawn from the real score on plan.html. The lane labels sit outside the
+   track so the track itself stays a clean strip: what is being compared across
+   classes is the shape of the strip, and a label inside it is noise. */
+
+.d-card { padding-bottom: 8px; }
+
+.d-title {
+  margin: 0 0 4px;
+  font-family: var(--serif);
+  font-size: 20px;
+  line-height: 1.3;
+}
+.d-genre { color: var(--accent); font-family: var(--sans); font-size: 16px; }
+
+.d-sheet {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.d-lane  { fill: var(--text);  font-size: 13px; font-family: var(--sans); }
+.d-voice { fill: var(--muted); font-size: 12px; font-family: var(--sans); }
+.d-phrase { fill: var(--muted); font-size: 12px; font-family: var(--sans); }
+.d-time  { fill: var(--muted); font-size: 12px; font-family: var(--sans); }
+.d-empty { fill: var(--muted); font-size: 12px; font-family: var(--sans); opacity: 0.7; }

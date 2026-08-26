@@ -267,6 +267,9 @@ const TAG_KEYS = ['tempo', 'reg', 'dyn', 'cellMod', 'leap', 'orn', 'sync',
 
 function wearing(table) {
   return {
+    /* which genre this version puts on that character, for pages that label
+       rather than play — the plan diagrams need the name, not the numbers */
+    genreOf(ch) { return table[ch.cls] ? table[ch.cls].label : null; },
     params(p, ch) {
       const g = table[ch.cls];
       if (!g) return;

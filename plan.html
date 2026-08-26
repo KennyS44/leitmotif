@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leitmotif — схема аранжировки</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="head">
+  <p class="head__kicker">Стенд · не продукт</p>
+  <h1 class="head__title">Что играет каждый класс</h1>
+  <p class="head__lede">
+    Схемы рисуются из настоящей партитуры, а не из описания, поэтому разойтись
+    с тем, что звучит на сайте, они не могут. Меняется мапинг — меняются
+    картинки.
+  </p>
+  <p class="head__note">
+    Мелодия и второй голос нарисованы по высоте — это форма самой темы.
+    Остальные дорожки плоские: от них нужен <b>рисунок</b>, а рисунок как раз и
+    сравнивается между классами. Вертикальные линии — четыре фразы,
+    <b>A A' B A''</b>.
+  </p>
+  <div class="pick">
+    <label class="pick__label" for="which">Версия</label>
+    <select id="which" class="pick__select"></select>
+  </div>
+</header>
+
+<main class="list" id="plans"></main>
+
+<footer class="foot">
+  <p><a href="compare.html">← на стенд A/B</a> · <a href="index.html">к темам</a></p>
+  <p class="foot__fine">
+    Картинками, одним файлом на версию:
+    <a href="plan/plan-osnovnoy.png">основной жанр</a> ·
+    <a href="plan/plan-zapasnoy.png">запасной</a> ·
+    <a href="plan/plan-kak-seychas.png">как сейчас</a>.
+    Это снимки, сделанные вручную — живая версия здесь, на странице, и она
+    перерисовывается из партитуры сама.
+  </p>
+</footer>
+
+<script src="mapping.js"></script>
+<script src="music.js"></script>
+<script src="render.js"></script>
+<script src="characters.js"></script>
+<script src="i18n.js"></script>
+<script src="labels.js"></script>
+<script src="variants.js"></script>
+<script src="plan.js"></script>
+</body>
+</html>
