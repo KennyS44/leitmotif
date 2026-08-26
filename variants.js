@@ -278,6 +278,30 @@ function wearing(table) {
   };
 }
 
+/* The class list under a version is built from the table it describes, not
+   typed out beside it.
+ *
+ * It was typed out, once, and it drifted within a day: the sheet said
+ * "Волшебник" because that is what the dictionary says, and my hand-written
+ * line under it said "Маг". Kenny caught it and asked whether the wizard had
+ * quietly become a different class. Two names for one class, on one screen, at
+ * the exact moment he is being asked which class he is hearing.
+ *
+ * A list that is maintained by hand next to the thing it lists will disagree
+ * with it eventually. Read once, from `Sheet`, sorted by the Russian name so a
+ * class can be found by eye. Read lazily, because the bench switches to Russian
+ * after this file has already loaded. */
+function listing(table) {
+  return Object.keys(table)
+    .map((cls) => ({
+      name: window.Sheet.label('classes', cls, window.Mapping.CLASSES[cls].label),
+      genre: table[cls].label,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+    .map((x) => `${x.name} — ${x.genre}`)
+    .join(' · ');
+}
+
 window.VARIANTS = {
 
   on: 'Grukk Skullsplitter',
@@ -290,21 +314,12 @@ window.VARIANTS = {
 
     { id: 'primary',
       label: 'B — основной жанр',
-      note: 'Бард — трубадуры · Варвар — скандинавский фолк, 124 bpm · '
-          + 'Воин — классицизм · Маг — барокко · Друид — ambient · '
-          + 'Жрец — хорал · Колдун — darkwave · Монах — китайская пентатоника · '
-          + 'Паладин — романтизм · Плут — босса-нова · Следопыт — скандинавский '
-          + 'фолк · Чародей — алеаторика · Изобретатель — чиптюн.',
+      get note() { return listing(PRIMARY); },
       ...wearing(PRIMARY) },
 
     { id: 'alternate',
       label: 'C — запасной жанр',
-      note: 'Второй кандидат на тот же класс. Бард — цыганский джаз (тот, что '
-          + 'тебе уже понравился) · Варвар — индастриал · Воин — минимализм · '
-          + 'Маг — сериализм · Друид — кельтское · Жрец — sacred minimalism · '
-          + 'Колдун — спектрализм · Монах — минимализм · Паладин — органум · '
-          + 'Плут — танго · Следопыт — минимализм дозора · Чародей — trance · '
-          + 'Изобретатель — musique concrète.',
+      get note() { return `Второй кандидат на тот же класс. ${listing(ALTERNATE)}`; },
       ...wearing(ALTERNATE) },
   ],
 };
