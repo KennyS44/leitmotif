@@ -209,7 +209,12 @@ function composeScore(p) {
   const TOP_NOTE = 96;
 
   const stack = Math.max(-12, Math.min(12, p.reg));
-  const bassRoot = p.root + BASS + stack;
+  /* The register clamp stops at a foot below concert, which is right for a
+     melody and not enough for a class whose whole subject is fury: the
+     barbarian came back "не хватает более низких нот". `bassDrop` moves the
+     bass alone, below the clamp — safe in the one direction, since the rule
+     that matters is that the bass never climbs over the chord above it. */
+  const bassRoot = p.root + BASS + stack + (p.bassDrop || 0);
   const padRoot = p.root + PAD + stack;
   const floor = padRoot + 12;        /* nothing melodic may sink into the pad */
   /* A motif that dips below its starting note would drag the melody down into
@@ -257,6 +262,30 @@ function composeScore(p) {
    */
   const beatDur = barDur / beats;
 
+  /* HOW BUSY THE FIGURE IS, PHRASE BY PHRASE.
+   *
+   * The figures fixed the complaint that every genre shared one accompaniment.
+   * They did not fix the next one: within a theme the figure was identical from
+   * the first bar to the last, so a piece with four phrases repeated the same
+   * bar sixteen times underneath. Kenny on the fighter — "однотипно на
+   * протяжении всей музыки, тут хочется слышать развитие в каждой части" — and
+   * on the rogue, "всё ещё однотипный бас". One cause, two reports.
+   *
+   * `nobody plays all the way through` was already the rule for whole parts.
+   * This is the same rule inside a part: the opening states the figure plainly,
+   * the build fills it in, the return comes back with everything.
+   *
+   *   A   plain — every other event
+   *   A'  still plain: this is where the background first speaks, and it should
+   *       arrive stating the figure rather than already at full
+   *   B   full, and the bass leans in
+   *   A'' as written, so the return is heard as a return
+   */
+  const DENSITY = [0.5, 0.7, 1.25, 1];
+  let phraseDensity = 1;
+  /* skip(i) — true when this event belongs to a thicker phrase than this one */
+  const skip = (i) => phraseDensity < 1 && i % 2 === 1;
+
   function comp(deg, prevDeg, held, t, swell) {
     const tones = padVoicing(p, deg);
     const base = (0.28 + p.dyn * 0.10) * swell;
@@ -271,24 +300,29 @@ function composeScore(p) {
       /* a chord on every beat, weight on the first — tango, march */
       case 'pulse':
         for (let i = 0; i < beats; i += 1) {
+          if (skip(i)) continue;
           put(i * beatDur, beatDur * 0.55, base * (i ? 0.78 : 1));
+          if (phraseDensity > 1) put(i * beatDur + beatDur * 0.5, beatDur * 0.3, base * 0.5);
         }
         return;
       /* only the off-beats, so the beat itself is a hole — bossa, ska */
       case 'offbeat':
         for (let i = 0; i < beats; i += 1) {
+          if (skip(i)) continue;
           put(i * beatDur + beatDur * 0.5, beatDur * 0.34, base * 0.85);
+          if (phraseDensity > 1) put(i * beatDur + beatDur * 0.25, beatDur * 0.2, base * 0.45);
         }
         return;
       /* two damped chops a beat — la pompe */
       case 'pompe':
         for (let i = 0; i < beats * 2; i += 1) {
+          if (skip(i)) continue;
           put(i * beatDur * 0.5, beatDur * 0.20, base * (i % 2 ? 0.65 : 0.95));
         }
         return;
       /* chord tones one after another — a running continuo */
       case 'arpeggio': {
-        const n = Math.max(4, beats * 2);
+        const n = Math.max(4, Math.round(beats * 2 * phraseDensity));
         const step = barDur / n;
         for (let i = 0; i < n; i += 1) {
           put(i * step, step * 1.7, base * 0.9, [tones[i % tones.length]]);
@@ -325,6 +359,7 @@ function composeScore(p) {
         return;
       case 'alternating':               /* oom-pah: root, then the fifth */
         for (let i = 0; i < beats; i += 1) {
+          if (skip(i)) continue;
           put(i * beatDur, beatDur * 0.68,
               i % 2 ? (chordRoot + 7) % 12 : chordRoot, base * (i % 2 ? 0.78 : 1));
         }
@@ -332,8 +367,14 @@ function composeScore(p) {
       case 'walking': {                 /* a note a beat, stepping through */
         const steps = [0, 4, 7, 4];
         for (let i = 0; i < beats; i += 1) {
+          if (skip(i)) continue;
           put(i * beatDur, beatDur * 0.82, (chordRoot + steps[i % steps.length]) % 12,
               base * 0.88);
+          /* the build gets a passing note between the steps */
+          if (phraseDensity > 1) {
+            put(i * beatDur + beatDur * 0.5, beatDur * 0.3,
+                (chordRoot + steps[(i + 1) % steps.length] + 2) % 12, base * 0.5);
+          }
         }
         return;
       }
@@ -352,6 +393,7 @@ function composeScore(p) {
 
   for (let ph = 0; ph < PHRASES; ph += 1) {
     const form = FORM[ph];
+    phraseDensity = DENSITY[ph];
     const plan = staging(ph, buildAt, bare, p.flags || {});
     const roles = trim(form.roles);
     const chords = trim(form.chords === 'home' ? homePick.degrees : AWAY_CHORDS);
@@ -626,7 +668,10 @@ function addPerc(out, p, t, timeOf, cell, beats, plan, swell, lastOfPhrase) {
   const v = (0.42 + p.dyn * 0.25) * swell;
   const push = (slot, kind, vel) => out.push({ t: t + timeOf(slot), kind, vel });
 
-  const LOW = { martial: 'kick', heavy: 'kick', light: 'kick', frame: 'frame', wood: 'wood', tick: 'kick' };
+  /* `tick` used to answer its accents with a full kick — a 46 Hz drum among
+     five-kilohertz clicks, with nothing in the middle to join them. It has its
+     own low hit now. */
+  const LOW = { martial: 'kick', heavy: 'kick', light: 'kick', frame: 'frame', wood: 'wood', tick: 'tap' };
   const BACK = { martial: 'snare', heavy: 'tom', light: 'snare', frame: 'frame', wood: 'wood', tick: 'tick' };
   const TICK = { martial: 'shaker', heavy: 'shaker', light: 'shaker', frame: 'shaker', wood: 'wood', tick: 'tick' };
 
@@ -974,45 +1019,71 @@ function playNote(ctx, dest, voice, note, p) {
       /* rustle: short bursts of bright noise, thicker on a louder note. Their
          placing is drawn from the note's own time, so the same theme rustles
          the same way twice. */
+      /* First version was a handful of sharp clicks — closer to static than to
+         a tree. Leaves are a *bed* that swells and falls, with grain on top:
+         one continuous band of noise doing the breathing, and the bursts made
+         softer, slower and more numerous so they blur into it rather than
+         standing out as taps. */
       const rnd = rng((Math.round(t * 997) ^ Math.round(note.midi * 31)) >>> 0);
-      const bursts = 4 + Math.floor(vel * 6);
-      for (let i = 0; i < bursts; i += 1) {
+      const bed = ctx.createBufferSource();
+      bed.buffer = noiseBuffer(ctx);
+      bed.loop = true;
+      const band = ctx.createBiquadFilter();
+      band.type = 'bandpass';
+      band.frequency.value = f * 4 + 1400;
+      band.Q.value = 0.5;
+      bed.connect(band); band.connect(out);
+      env(ctx, out, t, note.dur, vel * 0.13, 0.45 * atk, 0.6);
+      bed.start(t); bed.stop(t + note.dur + 0.7);
+
+      const grains = 10 + Math.floor(vel * 14);
+      for (let i = 0; i < grains; i += 1) {
         const at = t + rnd() * Math.max(0.12, note.dur);
         const src = ctx.createBufferSource();
         src.buffer = noiseBuffer(ctx);
         const hp = ctx.createBiquadFilter();
-        hp.type = 'highpass';
-        hp.frequency.value = f * 3 + 900;
+        hp.type = 'bandpass';
+        hp.frequency.value = f * 5 + 1800 + rnd() * 1600;
+        hp.Q.value = 0.8;
         const g = ctx.createGain();
-        const life = 0.04 + rnd() * 0.06;
+        const life = 0.09 + rnd() * 0.14;
         g.gain.setValueAtTime(0.0001, at);
-        g.gain.exponentialRampToValueAtTime(vel * (0.05 + rnd() * 0.06), at + 0.008);
+        /* a rustle rises rather than clicks: no instant attack anywhere */
+        g.gain.linearRampToValueAtTime(vel * (0.012 + rnd() * 0.022), at + life * 0.4);
         g.gain.exponentialRampToValueAtTime(0.0001, at + life);
         src.connect(hp); hp.connect(g); g.connect(out);
-        src.start(at); src.stop(at + life + 0.02);
+        src.start(at); src.stop(at + life + 0.05);
       }
       break;
     }
     case 'birds': {
       /* a call is two or three chirps: a sine swept steeply up, then down. The
          interval it starts on is the note, so the birds are in the key. */
+      /* A bird every time the colour track speaks is not a forest, it is a
+         budgerigar in a box. Most notes now pass in silence; when a call does
+         come it is two or three syllables at its own spacing, and it is softer
+         and further back than the first version, which sat on top of the music
+         like an effect. */
       const rnd = rng((Math.round(t * 613) ^ Math.round(note.midi * 89)) >>> 0);
-      const calls = 2 + Math.floor(rnd() * 2);
+      if (rnd() > 0.55) break;                 /* most of the time, nothing */
+      const calls = 2 + Math.floor(rnd() * 3);
+      let at = t + rnd() * 0.25;
       for (let i = 0; i < calls; i += 1) {
-        const at = t + i * (0.10 + rnd() * 0.12);
-        const life = 0.05 + rnd() * 0.05;
+        const life = 0.045 + rnd() * 0.055;
         const o = ctx.createOscillator();
         o.type = 'sine';
-        const top = f * (3.2 + rnd() * 1.4);
-        o.frequency.setValueAtTime(top * 0.62, at);
+        /* each syllable sits a little off the last, the way a real call does */
+        const top = f * (3.0 + rnd() * 1.8);
+        o.frequency.setValueAtTime(top * (0.55 + rnd() * 0.15), at);
         o.frequency.exponentialRampToValueAtTime(top, at + life * 0.35);
-        o.frequency.exponentialRampToValueAtTime(top * 0.70, at + life);
+        o.frequency.exponentialRampToValueAtTime(top * (0.62 + rnd() * 0.16), at + life);
         const g = ctx.createGain();
         g.gain.setValueAtTime(0.0001, at);
-        g.gain.exponentialRampToValueAtTime(vel * 0.16, at + 0.010);
+        g.gain.exponentialRampToValueAtTime(vel * (0.055 + rnd() * 0.045), at + 0.012);
         g.gain.exponentialRampToValueAtTime(0.0001, at + life);
         o.connect(g); g.connect(out);
         o.start(at); o.stop(at + life + 0.02);
+        at += life + 0.05 + rnd() * 0.14;
       }
       break;
     }
@@ -1119,15 +1190,23 @@ function playHit(ctx, dest, hit) {
   const out = ctx.createGain();
   out.connect(dest);
 
+  /* Each layer carries its own envelope.
+   *
+   * This one used to write the hit's shared output gain, so on any drum built
+   * from two layers — a snare, a frame drum, and now a kick with skin on it —
+   * the noise envelope was quietly gating the drum underneath it. A 55 ms
+   * transient would have cut a 460 ms kick down to 55 ms, which is precisely
+   * the "оборвано" being fixed. */
   const noise = (cut, type, q, decay, amp) => {
     const src = ctx.createBufferSource();
     src.buffer = noiseBuffer(ctx);
     const filt = ctx.createBiquadFilter();
     filt.type = type; filt.frequency.value = cut; filt.Q.value = q;
-    src.connect(filt); filt.connect(out);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(vel * amp, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+    src.connect(filt); filt.connect(g); g.connect(out);
     src.start(t); src.stop(t + decay + 0.05);
-    out.gain.setValueAtTime(vel * amp, t);
-    out.gain.exponentialRampToValueAtTime(0.0001, t + decay);
   };
   const thump = (from, to, decay, amp) => {
     const o = ctx.createOscillator();
@@ -1142,8 +1221,26 @@ function playHit(ctx, dest, hit) {
   };
 
   switch (hit.kind) {
-    case 'kick':   thump(140, 46, 0.34, 0.62); break;
-    case 'tom':    thump(190, 92, 0.40, 0.50); break;
+    /* A kick was a bare sine falling to 46 Hz and stopping. In a mix where
+       everything else rings it read as cut off — Kenny heard it on the two
+       classes that use the `tick` kit, and those are exactly the two where a
+       full kick sat among five-kilohertz clicks with nothing in between. The
+       skin is what was missing: a short noise transient at the moment of the
+       strike, and a tail long enough to be a drum rather than a blip. */
+    case 'kick':
+      thump(140, 46, 0.46, 0.62);
+      noise(280, 'lowpass', 0.8, 0.055, 0.16);
+      break;
+    case 'tom':
+      thump(190, 92, 0.50, 0.50);
+      noise(420, 'lowpass', 0.8, 0.06, 0.13);
+      break;
+    /* the low hit of the `tick` kit — its own, tight and pitched up, so it
+       belongs to the instrument the rest of the kit is playing */
+    case 'tap':
+      thump(190, 84, 0.22, 0.50);
+      noise(3000, 'bandpass', 6.0, 0.035, 0.20);
+      break;
     case 'snare':  noise(1900, 'bandpass', 1.1, 0.17, 0.22); thump(200, 150, 0.10, 0.14); break;
     case 'shaker': noise(7200, 'highpass', 0.8, 0.055, 0.16); break;
     case 'wood':   noise(2500, 'bandpass', 9.0, 0.05, 0.30); break;

@@ -335,6 +335,81 @@ are shaped noise bursts, wind is a resonance drifting across a band. Pitched
 from the harmony, so the forest is in the key, and given a low `cut` so the
 blend rules can never promote one of them into the tune.
 
+## The genre for each class, settled
+
+Twelve of thirteen are chosen. The bard is still open — both candidates came
+back "более резкие, а надо плавнее", so the search there continues in the
+opposite direction.
+
+| класс | жанр |
+|---|---|
+| варвар | балканская духовая |
+| воин | классицизм |
+| волшебник | импрессионизм |
+| друид | минимализм / процессы |
+| жрец | григорианский хорал |
+| изобретатель | индастриал |
+| колдун | darkwave |
+| монах | минимализм дозора |
+| паладин | органум |
+| плут | танго |
+| следопыт | барокко |
+| чародей | trance / goa |
+
+**Rejected genres are removed from the workbench, and only from there.** Five
+versions to click through had made the testing longer than the listening, and
+most of what was on offer was already ruled out. They stay in this file, which
+exists precisely so a rejected idea cannot come back next week wearing a new
+hat — and nobody has to click through a file.
+
+*My mistake, and what it cost.* The round before this one I recorded Kenny's
+verdicts and did not apply them, reasoning that a genre judged before the
+accompaniment figures existed ought to be re-judged after they landed. The
+reasoning was sound; not acting on it was not. He went to listen expecting his
+own choices in place, found the ranger still on Nordic folk instead of the
+baroque he had asked for, and spent the round working out whether he had been
+ignored. **A decision recorded and not applied reads as a decision lost.** If a
+verdict needs re-testing, apply it and say why it is being re-tested.
+
+## Development inside a theme
+
+**The figure was identical from the first bar to the last.** Giving each genre
+its own accompaniment fixed one complaint and exposed the next: a theme with
+four phrases repeated the same bar sixteen times underneath. Kenny on the
+fighter — "однотипно на протяжении всей музыки, тут хочется слышать развитие в
+каждой части" — and on the rogue, "всё ещё однотипный бас". One cause, two
+reports.
+
+"Nobody plays all the way through" was already the rule for whole parts. This is
+the same rule inside a part: A states the figure plainly, A' still plainly
+because that is where the background first speaks, B fills in and the bass leans,
+A'' returns. Measured on the fighter, background notes per phrase went from
+0 → 36 → 36 → 36 to **0 → 24 → 72 → 36**.
+
+**A kick was a bare sine that stopped.** Reported on the warlock and the
+sorcerer, and those two share the `tick` kit — where the accent answered with a
+full 46 Hz kick amid five-kilohertz clicks, with nothing in between. Two faults
+behind it:
+
+- `noise()` wrote the *shared* output gain of the hit, so on any drum built from
+  two layers the noise envelope silently gated the drum under it. A 55 ms
+  transient would have cut a 460 ms kick to 55 ms — which is the "оборвано"
+  itself. Each layer carries its own envelope now.
+- the `tick` kit has its own low hit, tight and pitched up, instead of borrowing
+  the kick.
+
+**`bassDrop`.** The register clamp stops twelve semitones below concert, which
+is right for a melody and not enough for fury — the barbarian came back "не
+хватает более низких нот". The bass alone can now go below the clamp; it is safe
+in that one direction, since the rule that matters is that the bass never climbs
+over the chord above it. Its lowest note went from 40 to 30.
+
+**The forest was too busy and too sharp.** First pass put a bird on every note
+of the colour track, which is a budgerigar in a box rather than a wood. Most
+notes pass in silence now, calls have their own spacing and land softer; the
+leaves gained a continuous bed under the grains, and the grains rise instead of
+clicking.
+
 ## Open
 
 **Four classes are almost never heard alone.** `rollCharacter` gives a subclass
