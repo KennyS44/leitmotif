@@ -241,6 +241,50 @@ first version of the selector borrowed the language switch's class and was
 silently un-pressed by it on every draw — a screenshot caught it, no check did.
 There is a check now.
 
+## Genre
+
+**A class is dressed in a genre, because a genre is the only signature that
+needs no teaching.** Settled 2026-08-26 after three rounds on the A/B page.
+Baroque beat the current sound for the wizard and gypsy jazz beat it for the
+bard, on first hearing, with nothing explained beforehand.
+
+**The genre survives the dressing.** This is the finding that made the plan safe
+to scale, and it nearly went untested. The first version of the question removed
+the character's tags — but the genre *sets* register, roughness and tension
+outright, which are the very numbers the tags move, so on two of three
+characters "no difference" was guaranteed by construction rather than observed.
+An experiment with one possible answer is not an experiment. Re-asked with the
+tags laid back *over* the genre, where it could fail, the answer was still that
+the genre holds. Tags swamped an arbitrary signature; they cannot swamp a
+learned one.
+
+**Two rules decide which genres are available, and both are about telling
+classes apart rather than about any one class being right.**
+
+- *The palette is the budget.* Sixteen voices, six kits, two synthetic timbres.
+  Three classes given three different electronic genres would produce one sound
+  under three labels. Only two primaries are synth-led.
+- *A genre that lives in the drum pattern cannot speak.* The cell belongs to the
+  race and the genre layer does not take it. Taiko is mostly a drum pattern,
+  which is why it never arrived. What a genre can say here it says through
+  instrumentation, harmony and articulation.
+
+**The barbarian round, and what it cost.** The first attempt changed the genre
+*and* the lead instrument in one version — the same mistake already recorded
+over the pad and the race's instrument, made again. Kenny heard "a cross between
+a druid and a bard"; the bamboo whistle was the whole of it, and putting the
+class's own horn back fixed it. A pastoral flute reads as druid no matter what
+the drums are doing.
+
+*Second correction from the same round:* the barbarian was also far too slow.
+72 bpm is a funeral, not a rage. 124 now.
+
+**Two presets added — a ranger and a sorcerer.** Those were the only two of the
+thirteen classes no preset reached, so they could be heard only by rolling
+strangers until one turned up. Fine for a spot check, useless for walking the
+classes one after another, which is what choosing a genre for each of them
+needs. Fourteen cards on the front page now, not twelve.
+
 ---
 
 ## Open

@@ -89,6 +89,24 @@ window.PRESETS = [
     looks: ['huge', 'burly', 'weathered'],
     blurb: 'Builds the bridge, tests the bridge by standing on it.',
   },
+  /* Ranger and sorcerer were the two classes no preset reached, so two of the
+     thirteen could only be heard by rolling strangers until one turned up. That
+     is fine for a spot check and useless for walking the classes one after
+     another, which is what choosing a genre for each of them needs. */
+  {
+    name: 'Wrenna Halewood',
+    cls: 'ranger', sub: 'hunter', race: 'halfelf', alignment: 'CG',
+    traits: ['calm', 'loyal', 'restless'],
+    looks: ['weathered', 'gaunt'],
+    blurb: 'Knows every path out of the valley and has never had to use one.',
+  },
+  {
+    name: 'Sabbath Ryn',
+    cls: 'sorcerer', race: 'tiefling', alignment: 'CN',
+    traits: ['reckless', 'hotheaded', 'curious'],
+    looks: ['young', 'radiant'],
+    blurb: 'The magic arrived first and has never once asked permission.',
+  },
 ];
 
 /* ------------------------------------------------------- rolling a stranger
