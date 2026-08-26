@@ -195,6 +195,11 @@ const VOICES = {
   lute:    { fam: 'pluck',  bright: 0.60, bite: 0.80, cut: 0.70 },
   pizz:    { fam: 'pluck',  bright: 0.58, bite: 0.90, cut: 0.75 },
   harp:    { fam: 'pluck',  bright: 0.66, bite: 0.60, cut: 0.60 },
+  /* Outdoor voices. `cut` is deliberately low: they are a place rather than a
+     part, and the blend rules must never promote one of them into the tune. */
+  wind:    { fam: 'air',    bright: 0.30, bite: 0.05, cut: 0.20 },
+  leaves:  { fam: 'air',    bright: 0.80, bite: 0.30, cut: 0.25 },
+  birds:   { fam: 'air',    bright: 0.85, bite: 0.45, cut: 0.30 },
 };
 
 /* How well a candidate would sit behind a lead that is already chosen. Higher

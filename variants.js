@@ -63,6 +63,7 @@ const PRIMARY = {
   /* Troubadour song. The lute is the bard's own instrument and the frame drum
      is the one percussion that reads as "a person playing", not as a kit. */
   bard: { label: 'трубадуры / ars nova',
+    comp: 'pompe', bassFig: 'alternating', bassVoice: 'pizz',
     lead: 'lute', pad: 'harp', perc: 'frame',
     tempo: 116, swing: 0.12, cellMod: +0.15, orn: 0.40, sync: 0.25,
     cadence: 0.70, tension: 0.15, legato: 0.85, attack: 0.90, rev: 0.30,
@@ -72,6 +73,7 @@ const PRIMARY = {
      that took it away is exactly the round that failed. Short notes, dry room,
      drone underneath, and the tempo Kenny asked for. */
   barbarian: { label: 'скандинавский фолк',
+    comp: 'pulse', bassFig: 'pedal', bassVoice: 'dark',
     lead: 'horn', pad: 'dark', perc: 'heavy',
     tempo: 124, swing: 0, cellMod: +0.10, orn: 0.05, sync: 0.15,
     cadence: 0.50, tension: 0.25, legato: 0.95, attack: 0.55, rev: 0.35,
@@ -81,6 +83,7 @@ const PRIMARY = {
      disciplined music there is, for the class whose only constant is
      discipline. */
   fighter: { label: 'классицизм',
+    comp: 'pulse', bassFig: 'alternating', bassVoice: 'pizz',
     lead: 'strings', pad: 'horn', perc: 'martial',
     tempo: 120, swing: 0, cellMod: +0.10, orn: 0.20, sync: 0.05,
     cadence: 0.95, tension: 0.10, legato: 0.85, attack: 0.95, rev: 0.30,
@@ -89,6 +92,7 @@ const PRIMARY = {
   /* Baroque, unchanged — the one Kenny has already said is better. No kit at
      all is half the signal. */
   wizard: { label: 'барокко',
+    comp: 'arpeggio', bassFig: 'walking', bassVoice: 'organ',
     lead: 'lute', pad: 'organ', perc: null,
     tempo: 108, swing: 0, cellMod: +0.35, orn: 0.55, sync: 0.05,
     cadence: 0.95, tension: 0.10, legato: 0.75, attack: 0.95, rev: 0.35,
@@ -97,8 +101,11 @@ const PRIMARY = {
   /* Ambient. The source says a druid is "in no way a lord of nature — instead
      they feel themselves part of its irresistible will", which is the sleeve
      note of every ambient record ever pressed. Slow, breathing, no kit. */
-  druid: { label: 'ambient',
-    lead: 'air', pad: 'strings', perc: null,
+  /* and the one you asked for: wind underneath, birds on the colour track.
+     They are pitched from the harmony, so the forest is in the key. */
+  druid: { label: 'ambient + природа',
+    comp: 'swell', bassFig: 'pedal', bassVoice: 'dark',
+    lead: 'air', pad: 'wind', hue: 'birds', perc: null,
     tempo: 78, swing: 0, cellMod: -0.50, orn: 0.05, sync: 0.05,
     cadence: 0.35, tension: 0.15, legato: 2.00, attack: 0.30, rev: 0.75,
     rough: 0, drone: true, reg: -2, dyn: 0.55 },
@@ -107,6 +114,7 @@ const PRIMARY = {
      like a building rather than a person; this is the music that shape came
      from. */
   cleric: { label: 'григорианский хорал',
+    comp: 'swell', bassFig: 'pedal', bassVoice: 'organ',
     lead: 'choir', pad: 'organ', perc: null,
     tempo: 76, swing: 0, cellMod: -0.45, orn: 0.05, sync: 0.00,
     cadence: 0.85, tension: 0.05, legato: 2.20, attack: 0.35, rev: 0.85,
@@ -116,6 +124,7 @@ const PRIMARY = {
      electronics is the sound that genre fiction long ago agreed means exactly
      that. */
   warlock: { label: 'darkwave',
+    comp: 'offbeat', bassFig: 'sparse', bassVoice: 'dark',
     lead: 'dark', pad: 'pulse', perc: 'tick',
     tempo: 96, swing: 0, cellMod: +0.20, orn: 0.15, sync: 0.35,
     cadence: 0.35, tension: 0.60, legato: 0.90, attack: 0.70, rev: 0.55,
@@ -124,6 +133,7 @@ const PRIMARY = {
   /* Chinese pentatonic. The monastery, ki, contemplation — and a scale nobody
      needs to be taught to place. */
   monk: { label: 'китайская пентатоника',
+    comp: 'none', bassFig: 'sparse', bassVoice: 'harp',
     lead: 'flute', pad: 'harp', perc: 'wood',
     tempo: 88, swing: 0, cellMod: -0.20, orn: 0.35, sync: 0.15,
     cadence: 0.60, tension: 0.05, legato: 1.20, attack: 0.75, rev: 0.45,
@@ -132,6 +142,7 @@ const PRIMARY = {
   /* Romanticism. Heroic, large, noble — the oath as a mighty contract, and the
      one genre where phrases are allowed to climb. */
   paladin: { label: 'романтизм',
+    comp: 'swell', bassFig: 'pedal', bassVoice: 'organ',
     lead: 'brass', pad: 'strings', perc: 'martial',
     tempo: 84, swing: 0, cellMod: 0, orn: 0.25, sync: 0.10,
     cadence: 0.90, tension: 0.35, legato: 1.30, attack: 0.80, rev: 0.50,
@@ -141,6 +152,7 @@ const PRIMARY = {
      one placed strike rather than a flurry. Quiet, syncopated, a light touch,
      and the only primary that is deliberately understated. */
   rogue: { label: 'босса-нова',
+    comp: 'offbeat', bassFig: 'walking', bassVoice: 'pizz',
     lead: 'pizz', pad: 'harp', perc: 'tick',
     tempo: 128, swing: 0.25, cellMod: +0.20, orn: 0.20, sync: 0.60,
     cadence: 0.45, tension: 0.50, legato: 0.70, attack: 0.85, rev: 0.20,
@@ -149,6 +161,7 @@ const PRIMARY = {
   /* Scandinavian folk. The endless watch on the borderland, alone — a fiddle
      over a drone is what that has always sounded like. */
   ranger: { label: 'скандинавский фолк',
+    comp: 'arpeggio', bassFig: 'sparse', bassVoice: 'harp',
     lead: 'fiddle', pad: 'air', perc: 'frame',
     tempo: 92, swing: 0, cellMod: -0.15, orn: 0.30, sync: 0.15,
     cadence: 0.55, tension: 0.25, legato: 1.10, attack: 0.80, rev: 0.55,
@@ -158,6 +171,7 @@ const PRIMARY = {
      the whole list, and it is the one place where an unstable, barely governed
      surface is the point rather than a fault. */
   sorcerer: { label: 'алеаторика',
+    comp: 'pulse', bassFig: 'walking', bassVoice: 'pulse',
     lead: 'glass', pad: 'pulse', perc: 'tick',
     tempo: 104, swing: 0, cellMod: +0.30, orn: 0.45, sync: 0.70,
     cadence: 0.20, tension: 0.70, legato: 0.80, attack: 0.60, rev: 0.45,
@@ -166,6 +180,7 @@ const PRIMARY = {
   /* Chiptune. Invention, tools, magic treated as a system to be decoded — and
      collateral damage. Fast, bright, brittle, mechanical. */
   artificer: { label: 'чиптюн',
+    comp: 'pulse', bassFig: 'alternating', bassVoice: 'pulse',
     lead: 'pulse', pad: 'glass', perc: 'tick',
     tempo: 140, swing: 0, cellMod: +0.45, orn: 0.25, sync: 0.40,
     cadence: 0.60, tension: 0.25, legato: 0.50, attack: 1.00, rev: 0.15,

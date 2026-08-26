@@ -287,6 +287,54 @@ needs. Fourteen cards on the front page now, not twelve.
 
 ---
 
+## The figure, and the bass
+
+**A genre is mostly its accompaniment figure, and there was not one.** The
+background laid a single chord on each bar line and held it; the bass played the
+cell's accents. Both were true of every character and every genre alike, so a
+baroque wizard and a bossa nova rogue had the same background lane — visible at
+a glance once `plan.html` drew it. Tango is a marcato four, bossa is an off-beat
+comp, baroque is a running continuo, gypsy jazz is la pompe. Given held block
+chords they differ only in paint, which is what was happening.
+
+Six figures for the background — `held` (the old one, still the default),
+`pulse`, `offbeat`, `pompe`, `arpeggio`, `swell`, `none` — and five for the bass
+— `accents` (the old one), `walking`, `alternating`, `pedal`, `sparse`. Density
+across the presets went from near-identical to 26–216 background notes.
+
+**The bass was the loudest thing after the tune, in one timbre, on one figure.**
+Kenny: "слишком громкий и однотипный бас, который перекрывает часть другой
+мелодии". All three parts of that were literally true — the bus sat at 0.80 with
+no ceiling (against 0.52 for the background), and the instrument was always
+`strings`, or `dark` when droning, whatever the class said. Now 0.62 with a lid
+at 1100 Hz, and the genre picks its instrument.
+
+*Guarded by:* the diagrams are generated from `composeScore`, so a figure that
+stops varying shows up as a lane that stops varying, without anyone listening.
+
+## Karplus–Strong, and the outdoor voices
+
+**Sixteen voices, one method.** Every voice was two or three detuned sawtooths
+through a lowpass, which is why they sounded like relatives however the filters
+were set, and why a seventeenth would have added nothing. The palette is not
+short of names; it was short of *methods*.
+
+**Plucked strings are modelled now, not imitated.** A burst of noise in a loop
+one wavelength long, losing its top on each trip. The comment beside the old
+harp said this was impossible — "a delay shorter than one render block at these
+pitches, which browsers will not give inside a loop" — and it is right about a
+`DelayNode` in a feedback cycle, which Web Audio holds to one render quantum,
+about 344 Hz. Writing the samples into a buffer has no such floor, is exactly
+deterministic, and is cached per pitch, so a theme pays for a handful of buffers
+rather than three hundred notes. Lute, harp and pizzicato are one algorithm at
+three settings of strike and ring.
+
+**Wind, leaves and birds.** Asked for by Kenny for the druid, and the one thing
+a synthesiser can do honestly without samples: a bird is a swept sine, leaves
+are shaped noise bursts, wind is a resonance drifting across a band. Pitched
+from the harmony, so the forest is in the key, and given a low `cut` so the
+blend rules can never promote one of them into the tune.
+
 ## Open
 
 **Four classes are almost never heard alone.** `rollCharacter` gives a subclass

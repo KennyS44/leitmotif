@@ -238,6 +238,118 @@ function composeScore(p) {
   const barsPerPhrase = beats >= 5 ? 3 : BARS_PER_PHRASE;
   const trim = (arr) => (barsPerPhrase === 4 ? arr : [arr[0], arr[1], arr[3]]);
 
+  /* THE ACCOMPANIMENT FIGURE.
+   *
+   * For a long time there was not one. The background laid down a single chord
+   * on every bar line and held it, and the bass played the cell's accents, and
+   * that was true of every character and every genre alike. Kenny put it
+   * plainly — "почти у всех одинаковый фоновый рисунок" — and the diagrams on
+   * plan.html showed it at a glance: the background lane of a baroque wizard
+   * and of a bossa nova rogue were the same unbroken block.
+   *
+   * A genre is mostly its figure. Tango is a marcato four, bossa is an
+   * off-beat comp, baroque is a running continuo, gypsy jazz is la pompe, a
+   * waltz is oom-pah-pah. Give every one of them held block chords and they
+   * differ only in paint, which is exactly what was happening.
+   *
+   * `held` is the old behaviour and stays the default, so a character whose
+   * genre asks for nothing sounds exactly as it did.
+   */
+  const beatDur = barDur / beats;
+
+  function comp(deg, prevDeg, held, t, swell) {
+    const tones = padVoicing(p, deg);
+    const base = (0.28 + p.dyn * 0.10) * swell;
+    const put = (at, len, v, semis) => (semis || tones).forEach((semi) => {
+      tracks.pad.push({ t: t + at, midi: padRoot + semi,
+                        dur: Math.max(0.12, len), vel: Math.max(0.05, v) });
+    });
+
+    switch (p.comp) {
+      case 'none':
+        return;
+      /* a chord on every beat, weight on the first — tango, march */
+      case 'pulse':
+        for (let i = 0; i < beats; i += 1) {
+          put(i * beatDur, beatDur * 0.55, base * (i ? 0.78 : 1));
+        }
+        return;
+      /* only the off-beats, so the beat itself is a hole — bossa, ska */
+      case 'offbeat':
+        for (let i = 0; i < beats; i += 1) {
+          put(i * beatDur + beatDur * 0.5, beatDur * 0.34, base * 0.85);
+        }
+        return;
+      /* two damped chops a beat — la pompe */
+      case 'pompe':
+        for (let i = 0; i < beats * 2; i += 1) {
+          put(i * beatDur * 0.5, beatDur * 0.20, base * (i % 2 ? 0.65 : 0.95));
+        }
+        return;
+      /* chord tones one after another — a running continuo */
+      case 'arpeggio': {
+        const n = Math.max(4, beats * 2);
+        const step = barDur / n;
+        for (let i = 0; i < n; i += 1) {
+          put(i * step, step * 1.7, base * 0.9, [tones[i % tones.length]]);
+        }
+        return;
+      }
+      /* one chord across the phrase, arriving slowly — ambient, chant */
+      case 'swell':
+        if (deg !== prevDeg) put(0, barDur * (held ? 2 : 1), base * 0.9);
+        return;
+      default:
+        if (deg !== prevDeg) {
+          put(0, (held ? barDur * 2 : barDur) + OVERLAP, base);
+        }
+    }
+  }
+
+  /* The bass had one figure too, and it was the loudest part after the tune.
+     Its level comes down here and its own ceiling comes down in the mix; what
+     it plays is now the genre's business like everything else. */
+  function bassFigure(chordRoot, t, swell) {
+    const base = (0.34 + p.dyn * 0.10) * swell;
+    const put = (at, len, semi, v) => tracks.bass.push({
+      t: t + at, midi: bassRoot + semi,
+      dur: Math.max(MIN_NOTE, len) + OVERLAP, vel: Math.max(0.05, v),
+    });
+
+    switch (p.bassFig) {
+      case 'pedal':                     /* one note, the whole bar */
+        put(0, barDur * 0.98, chordRoot, base * 0.85);
+        return;
+      case 'sparse':                    /* the downbeat and nothing else */
+        put(0, beatDur * 1.2, chordRoot, base);
+        return;
+      case 'alternating':               /* oom-pah: root, then the fifth */
+        for (let i = 0; i < beats; i += 1) {
+          put(i * beatDur, beatDur * 0.68,
+              i % 2 ? (chordRoot + 7) % 12 : chordRoot, base * (i % 2 ? 0.78 : 1));
+        }
+        return;
+      case 'walking': {                 /* a note a beat, stepping through */
+        const steps = [0, 4, 7, 4];
+        for (let i = 0; i < beats; i += 1) {
+          put(i * beatDur, beatDur * 0.82, (chordRoot + steps[i % steps.length]) % 12,
+              base * 0.88);
+        }
+        return;
+      }
+      default: {                        /* the accents of the cell, as before */
+        const accents = cell.map((v, s) => (v === 2 ? s : -1)).filter((s) => s >= 0);
+        accents.forEach((s, i) => {
+          const nextAccent = i + 1 < accents.length ? accents[i + 1] : SLOTS;
+          /* both the root and its fifth are folded into the octave below the
+             pad, so the bass can never climb over the chord above it */
+          const semi = i === 0 ? chordRoot : (chordRoot + 7) % 12;
+          put(timeOf(s), (nextAccent - s) * slotDur, semi, base);
+        });
+      }
+    }
+  }
+
   for (let ph = 0; ph < PHRASES; ph += 1) {
     const form = FORM[ph];
     const plan = staging(ph, buildAt, bare, p.flags || {});
@@ -265,37 +377,19 @@ function composeScore(p) {
       const nextDeg = b + 1 < barsPerPhrase ? chords[b + 1] : -99;
       const held = deg === nextDeg;   /* same chord next bar: do not re-strike */
       const prevDeg = b > 0 ? chords[b - 1] : -99;
-      if (plan.pad && deg !== prevDeg) {
-        const tones = padVoicing(p, deg);
-        const len = (held ? barDur * 2 : barDur) - OVERLAP;
-        tones.forEach((semi) => {
-          tracks.pad.push({ t, midi: padRoot + semi, dur: len + OVERLAP * 2,
-                            vel: 0.28 + p.dyn * 0.10 });
-        });
-      }
+      if (plan.pad) comp(deg, prevDeg, held, t, swell);
 
-      /* --- bass: the accents of the cell, nothing else --------------- */
+      /* --- bass ------------------------------------------------------ */
       if (p.drone && b === 0) {
         const len = barDur * barsPerPhrase * 0.99;
-        tracks.bass.push({ t, midi: bassRoot, dur: len, vel: 0.38 });
-        tracks.bass.push({ t, midi: bassRoot + 7, dur: len, vel: 0.28 });
+        tracks.bass.push({ t, midi: bassRoot, dur: len, vel: 0.34 });
+        tracks.bass.push({ t, midi: bassRoot + 7, dur: len, vel: 0.25 });
       }
       /* ionian bends no degree, so it gets a pedal instead: the bass stays on
          the tonic under the moving chords, which is a colour of its own */
       const pedal = p.colour === null;
       const chordRoot = ((scalePitch(p, pedal ? 0 : deg) % 12) + 12) % 12;
-      const accents = cell.map((v, s) => (v === 2 ? s : -1)).filter((s) => s >= 0);
-      accents.forEach((s, i) => {
-        const nextAccent = i + 1 < accents.length ? accents[i + 1] : SLOTS;
-        /* both the root and its fifth are folded into the octave below the pad,
-           so the bass can never climb over the chord sitting above it */
-        const semi = i === 0 ? chordRoot : (chordRoot + 7) % 12;
-        tracks.bass.push({
-          t: t + timeOf(s), midi: bassRoot + semi,
-          dur: Math.max(MIN_NOTE, (nextAccent - s) * slotDur) + OVERLAP,
-          vel: 0.42 + p.dyn * 0.14,
-        });
-      });
+      bassFigure(chordRoot, t, swell);
 
       /* --- melody: the motif, laid on the cell ----------------------
          Decisions inside a bar depend on the bar's role and position, never on
@@ -564,6 +658,67 @@ function addPerc(out, p, t, timeOf, cell, beats, plan, swell, lastOfPhrase) {
 
 /* ------------------------------------------------------------------ audio */
 
+/* KARPLUS–STRONG.
+ *
+ * Every voice in this file used to be built the same way: two or three detuned
+ * sawtooths through a lowpass. Sixteen names, one method — which is why they
+ * sounded like relatives however the filters were set, and why adding a
+ * seventeenth saw would have added nothing.
+ *
+ * A plucked string is not a filtered sawtooth. It is a burst of noise trapped
+ * in a loop one wavelength long, losing its high partials a little on each trip
+ * round. That is the whole algorithm, and it gives a lute, a harpsichord or a
+ * koto a body that subtractive synthesis cannot fake.
+ *
+ * It is generated into a buffer rather than built from a DelayNode in a
+ * feedback loop: Web Audio makes a cycle through a delay wait a whole render
+ * quantum, which puts a floor of about 344 Hz on the pitch — most of a bass's
+ * range, gone. Writing the samples has no such limit, is exactly deterministic,
+ * and is cached per pitch, so a theme pays for a handful of buffers rather than
+ * for three hundred notes.
+ */
+const ksCache = new WeakMap();
+
+function ksBuffer(ctx, midi, bright, sustain) {
+  let perCtx = ksCache.get(ctx);
+  if (!perCtx) { perCtx = new Map(); ksCache.set(ctx, perCtx); }
+  const key = `${midi}|${bright}|${sustain}`;
+  const had = perCtx.get(key);
+  if (had) return had;
+
+  const rate = ctx.sampleRate;
+  const freq = freqOf(midi);
+  const N = Math.max(2, Math.round(rate / freq));
+  const seconds = Math.min(3.2, 0.35 + 2.8 * sustain);
+  const len = Math.max(rate * 0.05, Math.ceil(rate * seconds));
+  const buf = ctx.createBuffer(1, len, rate);
+  const d = buf.getChannelData(0);
+
+  /* the excitation is seeded from the pitch, so the same note is the same
+     pluck on every machine — the project's whole determinism rule */
+  const rnd = rng((Math.round(midi * 1013) ^ 0x9e3779b9) >>> 0);
+  const line = new Float32Array(N);
+  let prev = 0;
+  for (let i = 0; i < N; i += 1) {
+    const white = rnd() * 2 - 1;
+    /* a duller pluck is a softer stroke: the excitation is smoothed first */
+    prev = white * bright + prev * (1 - bright);
+    line[i] = prev;
+  }
+
+  let idx = 0;
+  for (let i = 0; i < len; i += 1) {
+    const cur = line[idx];
+    const next = line[(idx + 1) % N];
+    d[i] = cur;
+    /* averaging two neighbours is the string losing its top on every trip */
+    line[idx] = (cur * 0.5 + next * 0.5) * sustain;
+    idx = (idx + 1) % N;
+  }
+  perCtx.set(key, buf);
+  return buf;
+}
+
 const noiseCache = new WeakMap();
 
 function noiseBuffer(ctx) {
@@ -724,35 +879,35 @@ function playNote(ctx, dest, voice, note, p) {
     case 'dark':
       simple([-14, 0, 13], 640, 0.35, 0.6, 'sawtooth');
       break;
-    case 'lute': {
-      const stop = t + note.dur + 1.0;
-      const filt = ctx.createBiquadFilter();
-      filt.type = 'lowpass'; filt.Q.value = 1.0;
-      filt.frequency.setValueAtTime(3400, t);
-      filt.frequency.exponentialRampToValueAtTime(700, t + 0.6);
-      filt.connect(out);
-      [-4, 5].forEach((c) => detuneOsc(ctx, 'sawtooth', f, (c + rough * 12) * spread(note.dur), t, stop).connect(filt));
+    /* The three plucked voices are real strings now rather than filtered saws.
+       They differ from each other by how hard the string was struck (`bright`)
+       and how long it is allowed to ring (`sustain`), which is what actually
+       separates a harpsichord from a harp from a pizzicato cello. */
+    case 'lute':
+    case 'pizz':
+    case 'harp': {
+      const shape = {
+        lute: { bright: 0.85, sustain: 0.9955, gain: 0.42, ring: 0.55 },
+        harp: { bright: 0.55, sustain: 0.9975, gain: 0.40, ring: 1.00 },
+        pizz: { bright: 0.95, sustain: 0.9905, gain: 0.46, ring: 0.28 },
+      }[voice];
+      const src = ctx.createBufferSource();
+      src.buffer = ksBuffer(ctx, Math.round(note.midi), shape.bright, shape.sustain);
+      /* the buffer is cut for the note it was cached under; the small
+         mistuning left by rounding is corrected by playback rate */
+      src.playbackRate.value = f / freqOf(Math.round(note.midi));
+      const body = ctx.createBiquadFilter();
+      body.type = 'lowpass';
+      body.frequency.value = 1800 + 5200 * shape.bright - rough * 900;
+      body.Q.value = 0.7;
+      src.connect(body); body.connect(out);
+      /* a plucked note is stopped by the player letting go, not by the string
+         running out — so the tail is the shorter of its ring and the note */
+      const tail = Math.min(shape.ring + note.dur * 0.5, note.dur + shape.ring);
       out.gain.setValueAtTime(0.0001, t);
-      out.gain.exponentialRampToValueAtTime(vel * 0.30, t + 0.006 * atk);
-      out.gain.exponentialRampToValueAtTime(0.0001, t + 0.9 + note.dur * 0.4);
-      break;
-    }
-    case 'pizz': {
-      const stop = t + 0.6;
-      const filt = ctx.createBiquadFilter();
-      filt.type = 'lowpass'; filt.frequency.value = 2600; filt.Q.value = 1.4;
-      filt.connect(out);
-      detuneOsc(ctx, 'triangle', f, 0, t, stop).connect(filt);
-      const click = ctx.createBufferSource();
-      click.buffer = noiseBuffer(ctx);
-      const cg = ctx.createGain();
-      cg.gain.setValueAtTime(vel * 0.16, t);
-      cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.02);
-      click.connect(cg); cg.connect(filt);
-      click.start(t); click.stop(t + 0.05);
-      out.gain.setValueAtTime(0.0001, t);
-      out.gain.exponentialRampToValueAtTime(vel * 0.34, t + 0.005);
-      out.gain.exponentialRampToValueAtTime(0.0001, t + 0.30 + note.dur * 0.2);
+      out.gain.exponentialRampToValueAtTime(Math.max(0.0002, vel * shape.gain), t + 0.004 * atk);
+      out.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(0.08, tail));
+      src.start(t); src.stop(t + Math.max(0.1, tail) + 0.05);
       break;
     }
     case 'bell': {
@@ -786,22 +941,87 @@ function playNote(ctx, dest, voice, note, p) {
       env(ctx, out, t, note.dur, vel * 0.30, 0.09 * atk, 0.30);
       break;
     }
-    case 'harp': {
-      /* plain and clean: fundamental plus two quiet partials, struck and left
-         to ring. No feedback delay line — a real plucked-string model needs a
-         delay shorter than one render block at these pitches, which browsers
-         will not give inside a loop. */
-      const stop = t + 2.2;
-      [[1, 0.30], [2, 0.10], [3, 0.05]].forEach(([mult, amp]) => {
-        const o = detuneOsc(ctx, mult === 1 ? 'triangle' : 'sine', f * mult, 0, t, stop);
-        const g = ctx.createGain();
-        g.gain.setValueAtTime(0.0001, t);
-        g.gain.exponentialRampToValueAtTime(vel * amp, t + 0.004 * atk);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 1.4 / mult + note.dur * 0.3);
-        o.connect(g); g.connect(out);
-      });
+    /* THE OUTDOOR VOICES.
+     *
+     * Not instruments. Kenny asked for birdsong and the rustle of trees for the
+     * druid, and they are the one thing a synthesiser can do honestly without
+     * samples — a bird is a swept sine and leaves are shaped noise, and neither
+     * has ever been anything else.
+     *
+     * They are pitched, because everything here has to be: a note tells `wind`
+     * where to put its resonance and tells `birds` where to start the chirp, so
+     * they sit in the harmony rather than beside it. Played on the colour or
+     * the background track they read as a place rather than as a part, which is
+     * the point of them. */
+    case 'wind': {
+      const stop = t + note.dur + 0.6;
+      const src = ctx.createBufferSource();
+      src.buffer = noiseBuffer(ctx);
+      src.loop = true;
+      const band = ctx.createBiquadFilter();
+      band.type = 'bandpass';
+      band.Q.value = 1.4;
+      /* the gust: the resonance drifts across the note rather than sitting */
+      band.frequency.setValueAtTime(f * 0.8, t);
+      band.frequency.linearRampToValueAtTime(f * 1.6, t + note.dur * 0.55);
+      band.frequency.linearRampToValueAtTime(f * 0.9, t + note.dur);
+      src.connect(band); band.connect(out);
+      env(ctx, out, t, note.dur, vel * 0.22, 0.5 * atk, 0.7);
+      src.start(t); src.stop(stop);
       break;
     }
+    case 'leaves': {
+      /* rustle: short bursts of bright noise, thicker on a louder note. Their
+         placing is drawn from the note's own time, so the same theme rustles
+         the same way twice. */
+      const rnd = rng((Math.round(t * 997) ^ Math.round(note.midi * 31)) >>> 0);
+      const bursts = 4 + Math.floor(vel * 6);
+      for (let i = 0; i < bursts; i += 1) {
+        const at = t + rnd() * Math.max(0.12, note.dur);
+        const src = ctx.createBufferSource();
+        src.buffer = noiseBuffer(ctx);
+        const hp = ctx.createBiquadFilter();
+        hp.type = 'highpass';
+        hp.frequency.value = f * 3 + 900;
+        const g = ctx.createGain();
+        const life = 0.04 + rnd() * 0.06;
+        g.gain.setValueAtTime(0.0001, at);
+        g.gain.exponentialRampToValueAtTime(vel * (0.05 + rnd() * 0.06), at + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + life);
+        src.connect(hp); hp.connect(g); g.connect(out);
+        src.start(at); src.stop(at + life + 0.02);
+      }
+      break;
+    }
+    case 'birds': {
+      /* a call is two or three chirps: a sine swept steeply up, then down. The
+         interval it starts on is the note, so the birds are in the key. */
+      const rnd = rng((Math.round(t * 613) ^ Math.round(note.midi * 89)) >>> 0);
+      const calls = 2 + Math.floor(rnd() * 2);
+      for (let i = 0; i < calls; i += 1) {
+        const at = t + i * (0.10 + rnd() * 0.12);
+        const life = 0.05 + rnd() * 0.05;
+        const o = ctx.createOscillator();
+        o.type = 'sine';
+        const top = f * (3.2 + rnd() * 1.4);
+        o.frequency.setValueAtTime(top * 0.62, at);
+        o.frequency.exponentialRampToValueAtTime(top, at + life * 0.35);
+        o.frequency.exponentialRampToValueAtTime(top * 0.70, at + life);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, at);
+        g.gain.exponentialRampToValueAtTime(vel * 0.16, at + 0.010);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + life);
+        o.connect(g); g.connect(out);
+        o.start(at); o.stop(at + life + 0.02);
+      }
+      break;
+    }
+    /* The harp used to live here as a fundamental with two quiet partials, and
+       the comment beside it said a real plucked-string model was impossible:
+       "a delay shorter than one render block at these pitches, which browsers
+       will not give inside a loop". True of a DelayNode in a feedback cycle,
+       and the reason to write the samples instead. It plays with the other two
+       strings now. */
     case 'fiddle': {
       const stop = t + note.dur + 0.3;
       const filt = ctx.createBiquadFilter();
@@ -1012,7 +1232,12 @@ function renderScore(ctx, score, p, startAt) {
   const counterBus = bus(0.62 * fit('counter').gain, low * 1.2, fit('counter').tone);
   const hueBus = bus(0.50 * fit('hue').gain, low * 1.2, fit('hue').tone);
   const padBus = bus(0.52 * fit('pad').gain, low * 0.9, fit('pad').tone);
-  const bassBus = bus(0.80);                /* the only part allowed down there */
+  /* The bass used to sit at 0.80 with no ceiling — the second loudest thing in
+     the piece after the tune, and reaching all the way up into it. Kenny heard
+     it as covering the melody, and he was reading the mix correctly. It is the
+     foundation, so it keeps its bottom; the lid stops it competing for the band
+     the melody lives in. */
+  const bassBus = bus(0.62, 0, 1100);
   const percBus = ctx.createGain();
   percBus.gain.value = 0.72;
   percBus.connect(dry);
@@ -1066,7 +1291,11 @@ function renderScore(ctx, score, p, startAt) {
   play('counter', (n) => playNote(ctx, counterBus, p.counter || p.lead, n, p));
   play('hue', (n) => playNote(ctx, hueBus, p.hue || 'harp', n, p));
   play('pad', (n) => playNote(ctx, padBus, p.pad, n, p));
-  play('bass', (n) => playNote(ctx, bassBus, p.drone ? 'dark' : 'strings', n, p));
+  /* The bass had no instrument of its own: it was always `strings`, or `dark`
+     when droning, whatever the class or the genre said. One timbre under every
+     character is half of why they all sounded related. */
+  play('bass', (n) => playNote(ctx, bassBus,
+    p.bassVoice || (p.drone ? 'dark' : 'strings'), n, p));
   play('perc', (h) => playHit(ctx, percBus, h));
 
   return t0 + score.duration;
