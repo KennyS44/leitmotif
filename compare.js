@@ -16,7 +16,8 @@
 (function bench() {
 
 const Player = window.Player;
-const { characterToParams, CLASSES, RACES, ALIGNMENTS } = window.Mapping;
+const Sheet = window.Sheet;
+Sheet.use('ru');   /* the bench reads in Russian, without changing the site's setting */
 const { renderTheme, scoreFor } = window.Render;
 const variants = window.VARIANTS.list;
 
@@ -35,15 +36,20 @@ let buffers = [];             /* one per variant, filled as they render */
 
 const ui = Player.transport(card, scoreFor(ch, variants[0]).score.duration, {
   /* seeking while stopped only moves the head; nothing starts on its own */
-  state(playing) { el('play').textContent = playing ? 'Stop' : 'Play'; },
+  state(playing) { el('play').textContent = playing ? 'Стоп' : 'Играть'; },
 });
 
 /* ------------------------------------------------------------------ sheet */
 
+/* The bench reads in Russian, like every other word on this page. It used to
+   take the labels straight out of mapping.js, which are English — so the one
+   line telling you which class you are listening to was the one line you had to
+   translate in your head, at exactly the moment you were being asked to judge
+   whether the class is audible. `Sheet` already does this properly for the
+   other two pages; it just was not loaded here. */
 function sheetLine() {
-  const one = (k) => CLASSES[k].label;
-  const cls = one(ch.cls) + (ch.second ? ` / ${one(ch.second)}` : '');
-  return `${ch.name} — ${RACES[ch.race].label} ${cls} · ${ALIGNMENTS[ch.alignment].label}`;
+  const over = ((Sheet.dict() || {}).presets || {})[ch.name];
+  return `${(over && over.name) || ch.name} — ${Sheet.line(ch)}`;
 }
 
 /* The armed version's parameters, not the character's. A variant that changes
@@ -53,10 +59,12 @@ function sheetLine() {
    to judge exactly these things. */
 function whyLine() {
   const { p } = scoreFor(ch, variants[pick]);
-  const parts = [p.lead, p.pad, p.counter, p.hue].filter(Boolean).join(', ');
-  const kit = p.perc ? p.perc : 'no kit';
-  const swung = p.swing ? `, swung ${p.swing}` : '';
-  return `${parts} · ${kit} · ${p.modeName} · ${p.beats} beats at ${Math.round(p.tempo)} bpm${swung}`;
+  const voice = (v) => Sheet.label('voices', v, v);
+  const parts = [p.lead, p.pad, p.counter, p.hue].filter(Boolean).map(voice).join(', ');
+  const kit = p.perc ? Sheet.label('kits', p.perc, p.perc) : 'без ударных';
+  const swung = p.swing ? `, со сдвигом ${p.swing}` : '';
+  return `${parts} · ${kit} · ${Sheet.label('modes', p.modeName, p.modeName)} лад`
+    + ` · ${p.beats} доли, ${Math.round(p.tempo)} уд/мин${swung}`;
 }
 
 /* ---------------------------------------------------------------- versions */
@@ -79,7 +87,7 @@ async function prepare() {
     if (mine !== generation) return;
     if (!buffers[i]) {
       el('ready').textContent = variants.length > 1
-        ? `preparing ${order.indexOf(i) + 1}/${variants.length}…` : 'preparing…';
+        ? `собираю ${order.indexOf(i) + 1}/${variants.length}…` : 'собираю…';
       const buf = await renderTheme(ch, variants[i]);
       if (mine !== generation) return;
       buffers[i] = buf;
@@ -197,7 +205,7 @@ function choose(i) {
        but the head stays where it is, mid-comparison */
     drawDiff();
   } else {
-    el('ready').textContent = 'not ready yet…';
+    el('ready').textContent = 'ещё не готово…';
     prepare();
   }
 }
@@ -221,8 +229,15 @@ function load(next) {
 
 /* ------------------------------------------------------------------ wiring */
 
+/* the list is read in Russian too — an English name in the picker is the one
+   place a wrong choice costs a whole listening round */
 el('who').innerHTML = window.PRESETS
-  .map((c, i) => `<option value="${i}"${i === opensWith ? ' selected' : ''}>${c.name}</option>`)
+  .map((c, i) => {
+    const over = ((Sheet.dict() || {}).presets || {})[c.name];
+    const name = (over && over.name) || c.name;
+    const cls = Sheet.label('classes', c.cls, window.Mapping.CLASSES[c.cls].label);
+    return `<option value="${i}"${i === opensWith ? ' selected' : ''}>${name} — ${cls}</option>`;
+  })
   .join('');
 el('who').addEventListener('change', (e) => load(window.PRESETS[Number(e.target.value)]));
 

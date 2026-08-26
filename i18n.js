@@ -84,6 +84,14 @@ window.I18N = {
       fiddle: 'скрипка', organ: 'орган', whistle: 'низкая свирель',
       glass: 'стекло', pulse: 'импульсный синтезатор',
     },
+    /* The kits had no Russian names at all. The workbench prints which one is
+       playing, and an English word in the middle of a Russian line is exactly
+       what makes a listener doubt what he is hearing. */
+    kits: {
+      frame: 'рамный барабан', heavy: 'тяжёлые барабаны',
+      light: 'лёгкая перкуссия', martial: 'походный барабан',
+      tick: 'щётки', wood: 'деревянные',
+    },
     colours: ['', 'низкую секунду', 'низкую терцию', 'высокую кварту',
               'низкую квинту', 'натуральную сексту', 'низкую септиму'],
     modes: {
@@ -165,6 +173,14 @@ window.I18N = {
       'Ogrim Stoneback': {
         name: 'Огрим Камнеспин',
         blurb: 'Строит мост, потом проверяет мост, встав на него.',
+      },
+      'Wrenna Halewood': {
+        name: 'Ренна Хейлвуд',
+        blurb: 'Знает все тропы из долины и ни одной не воспользовалась.',
+      },
+      'Sabbath Ryn': {
+        name: 'Саббат Рин',
+        blurb: 'Магия пришла первой и ни разу не спросила разрешения.',
       },
     },
   },

@@ -47,6 +47,14 @@ window.Sheet = {
     localStorage.setItem('leitmotif.lang', next);
     document.documentElement.lang = next;
   },
+  /* Same, but without writing it down. The workbench reads in Russian whatever
+     language the site is set to, and it must not change that setting on the way
+     past — a page that silently rewrites a setting it only wanted to borrow is
+     a page you stop trusting. */
+  use(next) {
+    current = next;
+    document.documentElement.lang = next;
+  },
   dict,
   label,
   line,

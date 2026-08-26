@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,41 +10,41 @@
 <body>
 
 <header class="head">
-  <p class="head__kicker">Workbench · not the product</p>
+  <p class="head__kicker">Стенд · не продукт</p>
   <h1 class="head__title">A/B</h1>
   <p class="head__lede">
-    Two or three versions of the same edit on <strong>one timeline</strong>.
-    Switching keeps the moment, so the second version starts where the first one
-    was — there is no gap to forget across. Then the answer is a letter.
+    Две-три версии одной правки на <strong>одной линии времени</strong>.
+    Переключение сохраняет момент: вторая версия продолжается там, где была
+    первая, — забывать не через что. И тогда ответ это буква.
   </p>
   <p class="head__note">
-    Keys: <b>space</b> plays and stops, <b>1</b>–<b>9</b> switch version,
-    <b>←</b> <b>→</b> move by a second.
+    Клавиши: <b>пробел</b> — играть и стоп, <b>1</b>–<b>9</b> — сменить версию,
+    <b>←</b> <b>→</b> — на секунду назад и вперёд.
   </p>
 </header>
 
 <main class="list">
   <article class="card" id="bench">
     <div class="pick">
-      <label class="pick__label" for="who">Character</label>
+      <label class="pick__label" for="who">Персонаж</label>
       <select id="who" class="pick__select"></select>
-      <button id="roll" type="button">Roll a stranger</button>
+      <button id="roll" type="button">Случайный незнакомец</button>
     </div>
 
     <p class="card__sheet" id="sheet"></p>
 
-    <div class="versions" id="versions" role="group" aria-label="Version"></div>
+    <div class="versions" id="versions" role="group" aria-label="Версия"></div>
     <p class="card__blurb" id="note"></p>
 
     <div class="card__actions">
-      <button class="btn--play" id="play" type="button">Play</button>
+      <button class="btn--play" id="play" type="button">Играть</button>
       <span class="ready" id="ready" aria-live="polite"></span>
     </div>
 
     <div class="transport">
       <div class="diffmap" id="diffmap" aria-hidden="true"></div>
       <input class="seek" id="seek" type="range" min="0" max="100" step="1" value="0"
-             aria-label="Position in the theme">
+             aria-label="Позиция в теме">
       <p class="time"><span class="time__now">0:00</span> / <span class="time__total">0:00</span></p>
     </div>
     <p class="diffnote" id="diffnote" aria-live="polite"></p>
@@ -54,11 +54,11 @@
 </main>
 
 <footer class="foot">
-  <p><a href="index.html">← back to the themes</a></p>
+  <p><a href="index.html">← к темам</a></p>
   <p class="foot__fine">
-    Every version is levelled to the same peak before it is played. Without that
-    the louder one wins whatever else it does, and the comparison measures
-    volume rather than the edit.
+    Каждая версия перед проигрыванием выравнивается по одному и тому же пику.
+    Без этого громкая побеждает, что бы она ни делала, и сравнение меряет
+    громкость, а не саму правку.
   </p>
 </footer>
 
@@ -67,6 +67,8 @@
 <script src="render.js"></script>
 <script src="player.js"></script>
 <script src="characters.js"></script>
+<script src="i18n.js"></script>
+<script src="labels.js"></script>
 <script src="variants.js"></script>
 <script src="compare.js"></script>
 </body>
