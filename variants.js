@@ -272,6 +272,138 @@ const ALTERNATE = {
     rough: 0.40, drone: false, reg: 0, dyn: 0.66 },
 };
 
+/* THE SECOND SEARCH.
+ *
+ * Four classes missed on both candidates — wizard, barbarian, bard, druid — so
+ * they get two fresh ones each. Two more classes get what Kenny named himself:
+ * the monk should hear the ranger's watch-minimalism, and the artificer should
+ * hear Nordic folk and industrial.
+ *
+ * Everything else is left out of D and E on purpose. A class that already has
+ * an answer sounds like A here, and the note says so — filling the gap with a
+ * repeat of its own genre would make four versions where there are two.
+ *
+ * These are picked against the figures, which did not exist when the first
+ * eight were chosen. Ragtime is stride bass and a syncopated right hand; it was
+ * not expressible a day ago. Neither was a Balkan brass band, which is an
+ * off-beat chug or it is nothing.
+ */
+const FRESH_A = {
+
+  /* "Плетения магии" is literally weaving, and polyphony is the music of
+     independent lines woven together. A plucked accompaniment and a bass that
+     walks keep it moving, which is what separates it from the cleric's chant. */
+  wizard: { label: 'ренессансная полифония',
+    comp: 'arpeggio', bassFig: 'walking', bassVoice: 'organ',
+    lead: 'choir', pad: 'harp', perc: null,
+    tempo: 100, swing: 0, cellMod: +0.10, orn: 0.15, sync: 0.10,
+    cadence: 0.80, tension: 0.15, legato: 1.40, attack: 0.70, rev: 0.65,
+    rough: 0, drone: false, reg: 0, dyn: 0.62 },
+
+  /* A Balkan brass band: fast, hot, loud and slightly out of control. Keeps the
+     barbarian's brass, which is the part that carries the fury — the round that
+     took the horn away is the round that failed. */
+  barbarian: { label: 'балканская духовая',
+    comp: 'offbeat', bassFig: 'alternating', bassVoice: 'horn',
+    lead: 'brass', pad: 'horn', perc: 'heavy',
+    tempo: 152, swing: 0, cellMod: +0.30, orn: 0.35, sync: 0.40,
+    cadence: 0.55, tension: 0.30, legato: 0.60, attack: 0.50, rev: 0.25,
+    rough: 0.30, drone: false, reg: -4, dyn: 0.90 },
+
+  /* Ragtime: the entertainer. The left hand strides between root and fifth
+     while the right hand syncopates against it — which is exactly the pair of
+     figures added this round, and the reason to try it now. */
+  bard: { label: 'рэгтайм',
+    comp: 'offbeat', bassFig: 'alternating', bassVoice: 'pizz',
+    lead: 'lute', pad: 'pizz', perc: 'tick',
+    tempo: 96, swing: 0.10, cellMod: +0.30, orn: 0.30, sync: 0.65,
+    cadence: 0.80, tension: 0.30, legato: 0.60, attack: 0.95, rev: 0.20,
+    rough: 0, drone: false, reg: +2, dyn: 0.70 },
+
+  /* A raga. Ambient caught only the calm half of a druid; the source also says
+     "гнев природы" and "неодолимая воля". A drone that unfolds slowly and then
+     will not stop is that second half, and it is unlike anything else here. */
+  druid: { label: 'индийская рага',
+    comp: 'none', bassFig: 'pedal', bassVoice: 'dark',
+    lead: 'whistle', pad: 'wind', hue: 'birds', perc: 'frame',
+    tempo: 68, swing: 0, cellMod: -0.30, orn: 0.60, sync: 0.10,
+    cadence: 0.30, tension: 0.20, legato: 1.60, attack: 0.60, rev: 0.60,
+    rough: 0, drone: true, rise: +0.30, reg: -2, dyn: 0.60 },
+
+  /* what Kenny said suits the monk better than either of his own two */
+  monk: { label: 'минимализм дозора',
+    comp: 'arpeggio', bassFig: 'sparse', bassVoice: 'harp',
+    lead: 'whistle', pad: 'strings', perc: 'tick',
+    tempo: 96, swing: 0, cellMod: -0.35, orn: 0.10, sync: 0.10,
+    cadence: 0.45, tension: 0.20, legato: 1.50, attack: 0.55, rev: 0.60,
+    rough: 0, drone: true, reg: -2, dyn: 0.58 },
+
+  /* the first of the two he asked to hear on the artificer */
+  artificer: { label: 'скандинавский фолк',
+    comp: 'pulse', bassFig: 'pedal', bassVoice: 'dark',
+    lead: 'fiddle', pad: 'air', perc: 'frame',
+    tempo: 92, swing: 0, cellMod: -0.10, orn: 0.30, sync: 0.15,
+    cadence: 0.55, tension: 0.25, legato: 1.10, attack: 0.80, rev: 0.55,
+    rough: 0, drone: true, reg: -2, dyn: 0.64 },
+};
+
+const FRESH_B = {
+
+  /* Impressionism: shimmer, whole-tone haze, nothing landing quite where it was
+     promised. The illusion school by another name. */
+  wizard: { label: 'импрессионизм',
+    comp: 'arpeggio', bassFig: 'pedal', bassVoice: 'harp',
+    lead: 'glass', pad: 'harp', hue: 'air', perc: null,
+    tempo: 84, swing: 0, cellMod: +0.20, orn: 0.35, sync: 0.25,
+    cadence: 0.25, tension: 0.45, legato: 1.50, attack: 0.50, rev: 0.65,
+    rough: 0, drone: false, reg: +3, dyn: 0.58 },
+
+  /* Motorik. Not a rhythm the drums have to carry — a pulse that simply never
+     stops, which is what "необузданный, неугасимый" sounds like from outside. */
+  barbarian: { label: 'krautrock / motorik',
+    comp: 'pulse', bassFig: 'walking', bassVoice: 'pulse',
+    lead: 'horn', pad: 'pulse', perc: 'heavy',
+    tempo: 144, swing: 0, cellMod: +0.35, orn: 0.05, sync: 0.15,
+    cadence: 0.35, tension: 0.30, legato: 0.55, attack: 0.60, rev: 0.30,
+    rough: 0.20, drone: true, reg: -6, dyn: 0.85 },
+
+  /* A shanty. The source has a bard inspiring allies and carrying the tale —
+     which is a room singing together, not a soloist being clever. Deliberately
+     the opposite of gypsy jazz, since that missed. */
+  bard: { label: 'морские шанти',
+    comp: 'pulse', bassFig: 'alternating', bassVoice: 'pizz',
+    lead: 'choir', pad: 'lute', perc: 'frame',
+    tempo: 104, swing: 0, cellMod: +0.05, orn: 0.15, sync: 0.15,
+    cadence: 0.85, tension: 0.10, legato: 1.10, attack: 0.80, rev: 0.40,
+    rough: 0, drone: false, reg: -2, dyn: 0.75 },
+
+  /* Nature as process rather than as weather: interlocking parts that shift
+     against each other. The background here is the rustle itself. */
+  druid: { label: 'минимализм / процессы',
+    comp: 'arpeggio', bassFig: 'pedal', bassVoice: 'harp',
+    lead: 'flute', pad: 'leaves', hue: 'birds', perc: 'tick',
+    tempo: 104, swing: 0, cellMod: +0.45, orn: 0.00, sync: 0.10,
+    cadence: 0.30, tension: 0.10, legato: 0.70, attack: 0.85, rev: 0.50,
+    rough: 0, drone: false, reg: 0, dyn: 0.60 },
+
+  /* Gagaku: Japanese court music. Ceremonial, unhurried, a held reed underneath
+     — a monastery from a different direction than the pentatonic one. */
+  monk: { label: 'гагаку',
+    comp: 'swell', bassFig: 'pedal', bassVoice: 'organ',
+    lead: 'whistle', pad: 'organ', perc: 'wood',
+    tempo: 92, swing: 0, cellMod: -0.30, orn: 0.40, sync: 0.05,
+    cadence: 0.50, tension: 0.25, legato: 1.80, attack: 0.55, rev: 0.70,
+    rough: 0, drone: true, reg: +2, dyn: 0.58 },
+
+  /* the second of the two he asked to hear on the artificer */
+  artificer: { label: 'индастриал',
+    comp: 'pulse', bassFig: 'walking', bassVoice: 'pulse',
+    lead: 'pulse', pad: 'dark', perc: 'heavy',
+    tempo: 132, swing: 0, cellMod: +0.25, orn: 0.00, sync: 0.20,
+    cadence: 0.40, tension: 0.45, legato: 0.50, attack: 0.50, rev: 0.20,
+    rough: 0.60, drone: true, reg: -4, dyn: 0.88 },
+};
+
 /* The genre decides the instruments, the groove and the room; the character's
    own tags then bend the numbers from there. Judged this way on purpose — the
    version that removes the tags cannot fail, because the genre overwrites the
@@ -339,5 +471,22 @@ window.VARIANTS = {
       label: 'C — запасной жанр',
       get note() { return `Второй кандидат на тот же класс. ${listing(ALTERNATE)}`; },
       ...wearing(ALTERNATE) },
+
+    { id: 'freshA',
+      label: 'D — новый поиск 1',
+      get note() {
+        return `Только для тех, кто промахнулся. ${listing(FRESH_A)}. `
+          + 'На остальных классах звучит как A — у них ответ уже есть, и '
+          + 'повтор их же жанра сделал бы четыре версии там, где их две.';
+      },
+      ...wearing(FRESH_A) },
+
+    { id: 'freshB',
+      label: 'E — новый поиск 2',
+      get note() {
+        return `Второй новый кандидат. ${listing(FRESH_B)}. `
+          + 'На остальных классах — как A.';
+      },
+      ...wearing(FRESH_B) },
   ],
 };
