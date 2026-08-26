@@ -491,3 +491,24 @@ button:disabled:hover { border-color: var(--line); color: var(--text); }
 .d-phrase { fill: var(--muted); font-size: 12px; font-family: var(--sans); }
 .d-time  { fill: var(--muted); font-size: 12px; font-family: var(--sans); }
 .d-empty { fill: var(--muted); font-size: 12px; font-family: var(--sans); opacity: 0.7; }
+
+/* Switching a layer off. Sits under the sheet line because it changes what that
+   line says: press "класс" and the sheet reads Fighter, because a Fighter is
+   what is now playing. */
+.strip__label {
+  margin: 12px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+.strip { margin-top: 8px; }
+
+/* A pressed strip button means the layer is GONE, which is the opposite of what
+   pressed means everywhere else on this page. Accenting it the way the version
+   buttons are accented read as "selected" and had the two groups looking like
+   one. Struck through and dimmed says removed. */
+.strip button[aria-pressed="true"] {
+  border-color: var(--line);
+  color: var(--muted);
+  text-decoration: line-through;
+  opacity: 0.75;
+}

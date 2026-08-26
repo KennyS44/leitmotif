@@ -48,8 +48,14 @@ const ui = Player.transport(card, scoreFor(ch, variants[0]).score.duration, {
    whether the class is audible. `Sheet` already does this properly for the
    other two pages; it just was not loaded here. */
 function sheetLine() {
+  /* describes the character as *heard*, not as picked — with layers switched
+     off the two are different, and a line that showed the original would be
+     the workbench lying at the exact moment it is being trusted */
+  const c = shown();
   const over = ((Sheet.dict() || {}).presets || {})[ch.name];
-  return `${(over && over.name) || ch.name} — ${Sheet.line(ch)}`;
+  const off = Object.keys(strip).filter((k) => strip[k]).length;
+  const name = (over && over.name) || ch.name;
+  return `${name} — ${Sheet.line(c)}${off ? ` · снято слоёв: ${off}` : ''}`;
 }
 
 /* The armed version's parameters, not the character's. A variant that changes
@@ -58,7 +64,7 @@ function sheetLine() {
    contradicts the sound is worse than no label, because the ear is being asked
    to judge exactly these things. */
 function whyLine() {
-  const { p } = scoreFor(ch, variants[pick]);
+  const { p } = scoreFor(shown(), variants[pick]);
   const voice = (v) => Sheet.label('voices', v, v);
   const parts = [p.lead, p.pad, p.counter, p.hue].filter(Boolean).map(voice).join(', ');
   const kit = p.perc ? Sheet.label('kits', p.perc, p.perc) : 'без ударных';
@@ -88,7 +94,7 @@ async function prepare() {
     if (!buffers[i]) {
       el('ready').textContent = variants.length > 1
         ? `собираю ${order.indexOf(i) + 1}/${variants.length}…` : 'собираю…';
-      const buf = await renderTheme(ch, variants[i]);
+      const buf = await renderTheme(shown(), variants[i]);
       if (mine !== generation) return;
       buffers[i] = buf;
     }
@@ -195,7 +201,7 @@ function choose(i) {
   pick = i;
   drawVersions();
   el('why').textContent = whyLine();
-  const dur = scoreFor(ch, variants[i]).score.duration;
+  const dur = scoreFor(shown(), variants[i]).score.duration;
   ui.rescale(dur);
   if (buffers[i]) {
     /* the whole point of the page: same moment, other version */
@@ -210,16 +216,53 @@ function choose(i) {
   }
 }
 
+/* ------------------------------------------------------------ bare mode
+ *
+ * One layer at a time, because I cannot hear any of it.
+ *
+ * Every round so far has judged a whole character — class and race and
+ * alignment and five tags at once — and then argued about which of them was
+ * responsible. The measurements can say a field moved the notes; they cannot
+ * say a field was *heard*, and that is the only question worth asking. So the
+ * bench can now switch a layer off and leave the rest standing.
+ *
+ * Switching a layer off means neutralising it, not deleting it: there is no
+ * such thing as a character with no class, so the plainest one stands in.
+ * A theme with nothing to play would answer no question at all.
+ *
+ *   теги          traits and looks emptied
+ *   мировоззрение → true neutral, the one alignment that bends no degree
+ *   раса          → human, the one with no colour instrument of its own
+ *   класс         → fighter, the plainest motif family there is
+ *   подкласс      subclass and second class removed
+ *
+ * To hear what a class sounds like on its own, switch off everything else.
+ * To hear a race, switch off everything including the class.
+ */
+const NEUTRAL = { alignment: 'TN', race: 'human', cls: 'fighter' };
+
+const strip = { tags: false, alignment: false, race: false, cls: false, sub: false };
+
+function shown() {
+  const c = { ...ch };
+  if (strip.tags) { c.traits = []; c.looks = []; }
+  if (strip.alignment) c.alignment = NEUTRAL.alignment;
+  if (strip.race) c.race = NEUTRAL.race;
+  if (strip.cls) { c.cls = NEUTRAL.cls; c.sub = null; c.second = undefined; }
+  if (strip.sub) { c.sub = null; c.second = undefined; }
+  return c;
+}
+
 /* --------------------------------------------------------------- character */
 
 function load(next) {
   Player.stop();
-  ch = next;
+  if (next) ch = next;
   generation += 1;
   buffers = [];
   el('sheet').textContent = sheetLine();
   el('why').textContent = whyLine();
-  const dur = scoreFor(ch, variants[pick]).score.duration;
+  const dur = scoreFor(shown(), variants[pick]).score.duration;
   ui.rescale(dur);
   ui.setHead(0, dur);
   el('diffmap').innerHTML = '';
@@ -240,6 +283,19 @@ el('who').innerHTML = window.PRESETS
   })
   .join('');
 el('who').addEventListener('change', (e) => load(window.PRESETS[Number(e.target.value)]));
+
+/* Switching a layer off re-renders every version: the character being played is
+   a different one, and a buffer made from the old one would be a stale answer
+   to a question that has changed. */
+el('strip').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  const layer = b.dataset.layer;
+  strip[layer] = !strip[layer];
+  b.setAttribute('aria-pressed', String(strip[layer]));
+  buffers = [];
+  load(null);
+});
 
 el('roll').addEventListener('click', () => {
   el('who').selectedIndex = -1;

@@ -493,6 +493,44 @@ differently. The mutation only became a mutation when the name was copied as
 well; then it went red at 13/14, as it should. **A check accepted without being
 made to fail is a check nobody has read.**
 
+## Bare mode: one layer at a time
+
+**Every round so far judged a whole character and then argued about which field
+was responsible.** Class and race and alignment and five tags all sounding at
+once, and afterwards a discussion about which of them was heard. The
+measurements can say a field moved the notes; they cannot say a field was
+*heard*, and that is the only question that matters. Kenny named the constraint
+exactly: "чтобы я точно проконтролировал каждый этап, так как ты не умеешь
+слушать музыку."
+
+The bench can now switch a layer off and leave the rest standing.
+
+**Off means neutralised, not deleted.** There is no such thing as a character
+with no class, and a theme with nothing to play answers no question at all. So
+the plainest stand-in takes over: true neutral for alignment — the one that
+bends no degree — human for race, the one with no colour instrument of its own,
+and fighter for class.
+
+To hear a class on its own, switch off everything else. To hear a race, switch
+off the class as well.
+
+**The sheet line follows what is heard, not what was picked.** Press *класс* and
+it reads Воин, because a Воин is what is now playing. A workbench that showed
+the original character while playing a stripped one would be lying at the exact
+moment it is being trusted — and this project has already paid once for a label
+that disagreed with the sound.
+
+*Chosen over two alternatives:* a page that walks all thirteen races in turn,
+and a page of live sliders. The walker answers "is this field audible at all"
+and not "make it more so"; the sliders are the real tuning instrument but
+guessing which knobs to build before knowing which parameters are in question
+would cost a round. Bare mode is what both of them need underneath.
+
+*Detail worth keeping:* a pressed strip button means the layer is **gone**,
+which is the opposite of what pressed means everywhere else on the page. Styled
+like the version buttons it read as "selected" and the two groups looked like
+one. Struck through and dimmed says removed.
+
 ## Open
 
 **Four classes are almost never heard alone.** `rollCharacter` gives a subclass
