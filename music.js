@@ -764,6 +764,87 @@ function ksBuffer(ctx, midi, bright, sustain) {
   return buf;
 }
 
+/* THREE MORE WAYS TO MAKE A SOUND.
+ *
+ * Karplus–Strong broke the one-method monopoly; these finish the job. Every one
+ * of them is a handful of lines and no bytes on the wire — the page still ships
+ * nothing but code — and each one reaches timbres the saw-through-a-filter
+ * cannot get near at any setting.
+ *
+ *   PeriodicWave  a spectrum stated outright rather than filtered into being.
+ *                 Odd harmonics only is a clarinet, and no amount of lowpass on
+ *                 a sawtooth will ever be one.
+ *   FM            one oscillator bending another's pitch at audio rate. Bells,
+ *                 electric pianos, and anything that should sound struck rather
+ *                 than blown. Inharmonic ratios are the whole trick.
+ *   WaveShaper    a curve applied to the signal itself: overdrive, growl, the
+ *                 sound of something being pushed past what it can do.
+ */
+const waveCache = new WeakMap();
+
+function periodicWave(ctx, key, amps) {
+  let perCtx = waveCache.get(ctx);
+  if (!perCtx) { perCtx = new Map(); waveCache.set(ctx, perCtx); }
+  const had = perCtx.get(key);
+  if (had) return had;
+  const n = amps.length + 1;
+  const real = new Float32Array(n);
+  const imag = new Float32Array(n);
+  amps.forEach((a, i) => { imag[i + 1] = a; });
+  const wave = ctx.createPeriodicWave(real, imag, { disableNormalization: false });
+  perCtx.set(key, wave);
+  return wave;
+}
+
+const SPECTRA = {
+  /* a stopped pipe sounds only its odd partials — the hollow woody reading */
+  reed:  [1, 0, 0.34, 0, 0.20, 0, 0.13, 0, 0.09, 0, 0.06],
+  /* a double reed is the opposite: everything present, and loud with it */
+  shawm: [1, 0.82, 0.70, 0.60, 0.50, 0.42, 0.34, 0.27, 0.21, 0.16, 0.12],
+};
+
+const shaperCache = new WeakMap();
+
+function shaper(ctx, amount) {
+  let perCtx = shaperCache.get(ctx);
+  if (!perCtx) { perCtx = new Map(); shaperCache.set(ctx, perCtx); }
+  const had = perCtx.get(amount);
+  if (had) return had;
+  const n = 1024;
+  const curve = new Float32Array(n);
+  const k = amount * 40;
+  for (let i = 0; i < n; i += 1) {
+    const x = (i * 2) / (n - 1) - 1;
+    curve[i] = ((3 + k) * x) / (3 + k * Math.abs(x));
+  }
+  const ws = ctx.createWaveShaper();
+  ws.curve = curve;
+  ws.oversample = '2x';
+  perCtx.set(amount, ws);
+  return ws;
+}
+
+/* one oscillator bending another's frequency: the modulator is never heard on
+   its own, only as what it does to the carrier */
+function fmVoice(ctx, dest, f, ratio, index, t, stop) {
+  const carrier = ctx.createOscillator();
+  carrier.type = 'sine';
+  carrier.frequency.setValueAtTime(f, t);
+  const mod = ctx.createOscillator();
+  mod.type = 'sine';
+  mod.frequency.setValueAtTime(f * ratio, t);
+  const depth = ctx.createGain();
+  /* the index falls away as the note sounds, which is what makes a struck
+     thing sound struck: bright at the moment of the strike, plain after */
+  depth.gain.setValueAtTime(f * index, t);
+  depth.gain.exponentialRampToValueAtTime(Math.max(1, f * index * 0.04), stop - t > 0.2 ? t + 0.5 : stop);
+  mod.connect(depth); depth.connect(carrier.frequency);
+  carrier.connect(dest);
+  mod.start(t); mod.stop(stop);
+  carrier.start(t); carrier.stop(stop);
+  return carrier;
+}
+
 const noiseCache = new WeakMap();
 
 function noiseBuffer(ctx) {
@@ -990,6 +1071,78 @@ function playNote(ctx, dest, voice, note, p) {
       env(ctx, out, t, note.dur, vel * 0.30, 0.09 * atk, 0.30);
       break;
     }
+    /* --- stated spectra: PeriodicWave --------------------------------- */
+    case 'reed':
+    case 'shawm': {
+      const stop = t + note.dur + 0.3;
+      const filt = ctx.createBiquadFilter();
+      filt.type = 'lowpass'; filt.Q.value = 0.8;
+      filt.frequency.value = voice === 'reed' ? 2200 : 3600;
+      filt.connect(out);
+      const o = ctx.createOscillator();
+      o.setPeriodicWave(periodicWave(ctx, voice, SPECTRA[voice]));
+      o.frequency.setValueAtTime(f, t);
+      o.detune.setValueAtTime(rough * 10, t);
+      o.connect(filt);
+      o.start(t); o.stop(stop);
+      /* a reed speaks the moment air reaches it; a shawm speaks louder */
+      env(ctx, out, t, note.dur, vel * (voice === 'reed' ? 0.26 : 0.30),
+          (voice === 'reed' ? 0.05 : 0.03) * atk, 0.20);
+      break;
+    }
+
+    /* --- struck and metallic: FM -------------------------------------- */
+    case 'chime': {
+      /* an inharmonic ratio is what separates a bell from a flute */
+      const stop = t + Math.max(1.6, note.dur + 1.2);
+      fmVoice(ctx, out, f, 2.76, 3.4, t, stop);
+      out.gain.setValueAtTime(0.0001, t);
+      out.gain.exponentialRampToValueAtTime(vel * 0.30, t + 0.006 * atk);
+      out.gain.exponentialRampToValueAtTime(0.0001, t + 1.4 + note.dur * 0.3);
+      break;
+    }
+    case 'epiano': {
+      const stop = t + Math.max(0.7, note.dur + 0.6);
+      fmVoice(ctx, out, f, 1.0, 1.8, t, stop);
+      fmVoice(ctx, out, f * 2, 1.0, 0.6, t, stop);
+      out.gain.setValueAtTime(0.0001, t);
+      out.gain.exponentialRampToValueAtTime(vel * 0.32, t + 0.005 * atk);
+      out.gain.exponentialRampToValueAtTime(0.0001, t + 0.6 + note.dur * 0.5);
+      break;
+    }
+    case 'metal': {
+      /* clangorous on purpose: a ratio that belongs to no harmonic series,
+         then pushed through the shaper until it stops being polite */
+      const stop = t + note.dur + 0.5;
+      const ws = ctx.createWaveShaper();
+      ws.curve = shaper(ctx, 0.5 + rough).curve;
+      ws.oversample = '2x';
+      const filt = ctx.createBiquadFilter();
+      filt.type = 'lowpass'; filt.frequency.value = 2600; filt.Q.value = 0.9;
+      ws.connect(filt); filt.connect(out);
+      fmVoice(ctx, ws, f, 3.53, 2.2, t, stop);
+      env(ctx, out, t, note.dur, vel * 0.22, 0.01 * atk, 0.30);
+      break;
+    }
+
+    /* --- pushed past what it can do: WaveShaper ------------------------ */
+    case 'growl': {
+      const stop = t + note.dur + 0.35;
+      const ws = ctx.createWaveShaper();
+      ws.curve = shaper(ctx, 0.35 + rough * 1.2).curve;
+      ws.oversample = '2x';
+      const filt = ctx.createBiquadFilter();
+      filt.type = 'lowpass'; filt.Q.value = 1.1;
+      filt.frequency.setValueAtTime(300, t);
+      filt.frequency.linearRampToValueAtTime(900 + 1500 * vel, t + 0.09 * atk);
+      filt.frequency.linearRampToValueAtTime(600 + 600 * vel, t + note.dur);
+      ws.connect(filt); filt.connect(out);
+      [-8, 7].forEach((c) =>
+        detuneOsc(ctx, 'sawtooth', f, c * spread(note.dur), t, stop).connect(ws));
+      env(ctx, out, t, note.dur, vel * 0.20, 0.04 * atk, 0.24);
+      break;
+    }
+
     /* THE LOW HALF OF THE PALETTE.
      *
      * Asked for after the barbarian: dropping the register moved the notes down
@@ -1423,10 +1576,23 @@ function renderScore(ctx, score, p, startAt) {
      parts both putting energy at the bottom is what mud is: neither is heard
      down there, and both lose definition higher up. A gentle dip around 3 kHz
      takes the glare off the sawtooth voices at the same time. */
-  const bus = (level, clean, ceiling) => {
+  /* `pan` places a part across the stereo field.
+   *
+   * Everything used to arrive from the same point, which is a real part of why
+   * a busy arrangement read as one blob however well the levels were set: two
+   * instruments in the same place fight, and the same two a hand apart simply
+   * do not. The melody and the bass stay centred — those are the two a listener
+   * locates the music by — and the accompaniment opens out around them. */
+  const bus = (level, clean, ceiling, pan) => {
     const g = ctx.createGain();
     g.gain.value = level;
     let node = g;
+    if (pan && ctx.createStereoPanner) {
+      const sp = ctx.createStereoPanner();
+      sp.pan.value = pan;
+      node.connect(sp);
+      node = sp;
+    }
     /* A ceiling on brightness, handed down by the map. Whatever is brightest in
        a mix is heard as the melody, so an accompanying instrument that shines
        above the lead gets promoted by the ear into a tune of its own. Rolling
@@ -1466,9 +1632,9 @@ function renderScore(ctx, score, p, startAt) {
   const bl = p.blend || {};
   const fit = (k) => bl[k] || { gain: 1, tone: 0 };
   const leadBus = bus(1.0, low * 1.5);
-  const counterBus = bus(0.62 * fit('counter').gain, low * 1.2, fit('counter').tone);
-  const hueBus = bus(0.50 * fit('hue').gain, low * 1.2, fit('hue').tone);
-  const padBus = bus(0.52 * fit('pad').gain, low * 0.9, fit('pad').tone);
+  const counterBus = bus(0.62 * fit('counter').gain, low * 1.2, fit('counter').tone, -0.28);
+  const hueBus = bus(0.50 * fit('hue').gain, low * 1.2, fit('hue').tone, +0.32);
+  const padBus = bus(0.52 * fit('pad').gain, low * 0.9, fit('pad').tone, +0.14);
   /* The bass used to sit at 0.80 with no ceiling — the second loudest thing in
      the piece after the tune, and reaching all the way up into it. Kenny heard
      it as covering the melody, and he was reading the mix correctly. It is the

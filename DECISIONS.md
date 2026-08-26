@@ -451,6 +451,48 @@ voice that sounds an octave from where the score says would break the one rule
 the arrangement rests on, that bass sits under pad sits under melody. Register
 stays the genre's business, through `reg` and `bassDrop`.
 
+## Three more ways to make a sound
+
+Karplus–Strong broke the one-method monopoly; these finish it. All three are a
+handful of lines and **no bytes on the wire** — the page still ships nothing but
+code — and each reaches timbres a sawtooth through a lowpass cannot get near at
+any setting.
+
+- **PeriodicWave** — a spectrum stated outright instead of filtered into being.
+  Odd partials only is a clarinet (`reed`), and no amount of lowpass on a saw
+  will ever be one. All partials loud is a double reed (`shawm`).
+- **FM** — one oscillator bending another's pitch at audio rate, the modulation
+  index falling away as the note sounds, which is what makes a struck thing
+  sound struck. Inharmonic ratios give `chime` and `metal`; a 1:1 ratio gives
+  `epiano`.
+- **WaveShaper** — a curve applied to the signal itself. `growl` is brass pushed
+  past what it can do.
+
+**And the mix opens sideways.** Everything arrived from one point, which is a
+real part of why a busy arrangement read as one blob however well the levels sat:
+two instruments in the same place fight, and the same two a hand apart do not.
+Melody and bass stay centred — those are what a listener locates the music by —
+and the accompaniment spreads around them. Measured stereo width: 6% on the
+rogue, 26% on the fighter, 28% on the wizard, against 0% before.
+
+## A check that measured the wrong thing
+
+`every character renders distinct audio` compared RMS rounded to four places and
+called a collision "not distinct". It passed for months by luck and then reddened
+on a round that had made the map *more* varied: Pip and Fennick landed on 0.126148
+and 0.126084 — the same loudness to four places, and 964 against 1171 zero
+crossings a second. **Two themes that sound nothing alike are allowed to be
+equally loud.** That is what loudness is.
+
+It compares loudness, brightness and length together now.
+
+*And the first version of the fix was itself untestable.* Trying to make it fail,
+I copied Pip's sheet onto Fennick — and it still passed, because `characterSeed`
+hashes the name too, so two identical sheets under different names perform
+differently. The mutation only became a mutation when the name was copied as
+well; then it went red at 13/14, as it should. **A check accepted without being
+made to fail is a check nobody has read.**
+
 ## Open
 
 **Four classes are almost never heard alone.** `rollCharacter` gives a subclass

@@ -195,6 +195,17 @@ const VOICES = {
   lute:    { fam: 'pluck',  bright: 0.60, bite: 0.80, cut: 0.70 },
   pizz:    { fam: 'pluck',  bright: 0.58, bite: 0.90, cut: 0.75 },
   harp:    { fam: 'pluck',  bright: 0.66, bite: 0.60, cut: 0.60 },
+  /* Made by methods nothing else here uses: a stated spectrum, frequency
+     modulation, and a shaping curve. They are their own families because they
+     do not blend like the subtractive voices — a bell against a saw section is
+     not the same problem as two saw sections. */
+  reed:      { fam: 'reedy',  bright: 0.45, bite: 0.35, cut: 0.55 },
+  shawm:     { fam: 'reedy',  bright: 0.78, bite: 0.75, cut: 0.85 },
+  chime:     { fam: 'fm',     bright: 0.80, bite: 0.55, cut: 0.75 },
+  epiano:    { fam: 'fm',     bright: 0.58, bite: 0.50, cut: 0.60 },
+  metal:     { fam: 'fm',     bright: 0.72, bite: 0.85, cut: 0.80 },
+  growl:     { fam: 'brass',  bright: 0.52, bite: 0.90, cut: 0.85 },
+
   /* The low half of the palette — one darker relative per family, so a class
      can be moved down in timbre and not only in pitch. Every one of them has a
      lower `bright` than the voice it stands in for, which is what keeps the

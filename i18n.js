@@ -88,6 +88,9 @@ window.I18N = {
       pedal: 'педальный орган', bassflute: 'басовая флейта', theorbo: 'теорба',
       tamtam: 'там-там', sub: 'низкий синтезатор',
       wind: 'ветер', leaves: 'листва', birds: 'птицы',
+      /* новые способы синтеза */
+      reed: 'кларнет', shawm: 'шалмей', chime: 'колокол',
+      epiano: 'электропиано', metal: 'металл', growl: 'рычащая медь',
     },
     /* The kits had no Russian names at all. The workbench prints which one is
        playing, and an English word in the middle of a Russian line is exactly

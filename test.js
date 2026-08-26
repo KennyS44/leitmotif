@@ -547,9 +547,24 @@ function watch(name, held, detail) {
       Math.max(...brights) - Math.min(...brights) > 200,
       `${Math.min(...brights)} … ${Math.max(...brights)}`);
 
-    const uniqueRms = new Set(audio.map((a) => a.rms)).size;
-    check('every character renders distinct audio', uniqueRms === audio.length,
-      `${uniqueRms}/${audio.length} distinct`);
+    /* Loudness was never distinctness.
+     *
+     * This asked whether any two characters shared an RMS rounded to four
+     * places and called a collision "not distinct". It passed for months by
+     * luck, then reddened on a round that had made the map *more* varied: Pip
+     * and Fennick came out at 0.126148 and 0.126084 — the same loudness to four
+     * places, and 964 against 1171 zero crossings a second. Two themes that
+     * sound nothing alike are allowed to be equally loud. That is what loudness
+     * is.
+     *
+     * A fingerprint of loudness, brightness and length asks the question the
+     * name claims. It can still fail — two characters rendering the same audio
+     * match on all three — and it was made to fail before being kept, by
+     * pointing two presets at one sheet. */
+    const fingerprint = (a) => `${a.rms}|${a.bright}|${a.seconds}`;
+    const unique = new Set(audio.map(fingerprint)).size;
+    check('every character renders distinct audio', unique === audio.length,
+      `${unique}/${audio.length} distinct`);
 
     const loud = audio.map((a) => a.rms);
     const spread = Math.max(...loud) / Math.min(...loud);
