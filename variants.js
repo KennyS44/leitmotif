@@ -63,12 +63,19 @@ const CHOSEN = {
     cadence: 0.75, tension: 0.15, legato: 1.60, attack: 0.55, rev: 0.55,
     rough: 0, drone: false, reg: 0, dyn: 0.60 },
 
-  /* Tempo and rhythm were right; the fury was not down there. The brass keeps
-     the top, and the bottom arrives — ten semitones lower, a low synth carrying
-     the pad instead of a second horn, and a drone under all of it. */
+  /* Tempo and rhythm were right; the fury was not.
+     *
+     * Dropping the register was not enough and Kenny said why: it moved the
+     * notes down and left the timbres where they were — "более низкий по
+     * звучанию всех инструментов, а не только более глубокий бас". A brass
+     * band an octave down is still a brass band playing high.
+     *
+     * So every part is now a different instrument rather than the same one
+     * lower: tuba for the trumpet, a sub for the pad, a low horn under the
+     * bass. The kit stays heavy, and the drone stays. */
   barbarian: { label: 'балканская духовая',
     comp: 'offbeat', bassFig: 'alternating', bassVoice: 'horn',
-    lead: 'brass', pad: 'dark', perc: 'heavy',
+    lead: 'tuba', pad: 'sub', hue: 'tamtam', perc: 'heavy',
     tempo: 152, swing: 0, cellMod: +0.30, orn: 0.35, sync: 0.40,
     cadence: 0.55, tension: 0.30, legato: 0.60, attack: 0.50, rev: 0.25,
     rough: 0.30, drone: true, reg: -12, bassDrop: -10, dyn: 0.94 },

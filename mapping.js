@@ -195,6 +195,19 @@ const VOICES = {
   lute:    { fam: 'pluck',  bright: 0.60, bite: 0.80, cut: 0.70 },
   pizz:    { fam: 'pluck',  bright: 0.58, bite: 0.90, cut: 0.75 },
   harp:    { fam: 'pluck',  bright: 0.66, bite: 0.60, cut: 0.60 },
+  /* The low half of the palette — one darker relative per family, so a class
+     can be moved down in timbre and not only in pitch. Every one of them has a
+     lower `bright` than the voice it stands in for, which is what keeps the
+     blend rules from promoting it over a melody sitting above it. */
+  tuba:      { fam: 'brass',  bright: 0.22, bite: 0.30, cut: 0.55 },
+  contra:    { fam: 'bowed',  bright: 0.28, bite: 0.18, cut: 0.45 },
+  basso:     { fam: 'vocal',  bright: 0.22, bite: 0.08, cut: 0.35 },
+  pedal:     { fam: 'pipe',   bright: 0.25, bite: 0.20, cut: 0.50 },
+  bassflute: { fam: 'pipe',   bright: 0.32, bite: 0.15, cut: 0.38 },
+  theorbo:   { fam: 'pluck',  bright: 0.34, bite: 0.45, cut: 0.50 },
+  tamtam:    { fam: 'struck', bright: 0.40, bite: 0.35, cut: 0.55 },
+  sub:       { fam: 'synth',  bright: 0.12, bite: 0.25, cut: 0.40 },
+
   /* Outdoor voices. `cut` is deliberately low: they are a place rather than a
      part, and the blend rules must never promote one of them into the tune. */
   wind:    { fam: 'air',    bright: 0.30, bite: 0.05, cut: 0.20 },

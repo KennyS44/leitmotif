@@ -83,6 +83,11 @@ window.I18N = {
       pizz: 'щипковые', bell: 'колокольчики', flute: 'флейта', harp: 'арфа',
       fiddle: 'скрипка', organ: 'орган', whistle: 'низкая свирель',
       glass: 'стекло', pulse: 'импульсный синтезатор',
+      /* низкая половина палитры */
+      tuba: 'туба', contra: 'виолончель и контрабас', basso: 'низкий хор',
+      pedal: 'педальный орган', bassflute: 'басовая флейта', theorbo: 'теорба',
+      tamtam: 'там-там', sub: 'низкий синтезатор',
+      wind: 'ветер', leaves: 'листва', birds: 'птицы',
     },
     /* The kits had no Russian names at all. The workbench prints which one is
        playing, and an English word in the middle of a Russian line is exactly

@@ -410,6 +410,47 @@ notes pass in silence now, calls have their own spacing and land softer; the
 leaves gained a continuous bed under the grains, and the grains rise instead of
 clicking.
 
+## The low half of the palette
+
+**Dropping the register is not the same as being a lower instrument.** The
+barbarian got `bassDrop`, came back still not furious enough, and Kenny named
+the reason exactly: "более низкий по звучанию **всех инструментов**, а не только
+более глубокий бас". Moving notes down leaves the timbres where they were, and a
+brass band an octave lower is still a brass band playing high.
+
+So every family now has a dark relative, modelled rather than transposed — a
+tuba is not a trumpet an octave down, it has a slower attack, almost no bite,
+and its energy sits under 400 Hz.
+
+| было | стало |
+|---|---|
+| brass | tuba |
+| strings, fiddle | contra |
+| choir | basso |
+| organ | pedal |
+| flute, whistle | bassflute |
+| lute, harp, pizz | theorbo |
+| glass, bell | tamtam |
+| pulse | dark, sub |
+
+The bass track is deliberately left out: it already has `bassDrop`, and the one
+part whose whole job is the bottom does not need a darker twin.
+
+*Measured, lead-only renders against their bright counterparts, zero-crossing
+rate as a stand-in for brightness:* tamtam −42%, brass→tuba −30%, strings→contra
+−28%, flute→bassflute −26%, organ→pedal −24%, pulse→sub −20%, choir→basso −15%,
+lute→theorbo −11%. The theorbo's number is the weakest and the measure is the
+reason: a plucked string's zero-crossing rate follows its fundamental, while
+what changed is how fast the harmonics die. Believe the ear over that row.
+
+*Whole barbarian, A against B:* brightness 586 → 408 Hz, lowest note 40 → 30.
+
+**Not done, and deliberately:** none of these voices transposes itself in
+`playNote`. It was tempting — a theorbo really does sit below a lute — but a
+voice that sounds an octave from where the score says would break the one rule
+the arrangement rests on, that bass sits under pad sits under melody. Register
+stays the genre's business, through `reg` and `bassDrop`.
+
 ## Open
 
 **Four classes are almost never heard alone.** `rollCharacter` gives a subclass

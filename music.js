@@ -930,11 +930,15 @@ function playNote(ctx, dest, voice, note, p) {
        separates a harpsichord from a harp from a pizzicato cello. */
     case 'lute':
     case 'pizz':
-    case 'harp': {
+    case 'harp':
+    case 'theorbo': {
       const shape = {
         lute: { bright: 0.85, sustain: 0.9955, gain: 0.42, ring: 0.55 },
         harp: { bright: 0.55, sustain: 0.9975, gain: 0.40, ring: 1.00 },
         pizz: { bright: 0.95, sustain: 0.9905, gain: 0.46, ring: 0.28 },
+        /* a long-necked bass lute: struck softly, held for a very long time —
+           the low relative of all three above */
+        theorbo: { bright: 0.14, sustain: 0.9988, gain: 0.48, ring: 1.80 },
       }[voice];
       const src = ctx.createBufferSource();
       src.buffer = ksBuffer(ctx, Math.round(note.midi), shape.bright, shape.sustain);
@@ -986,6 +990,142 @@ function playNote(ctx, dest, voice, note, p) {
       env(ctx, out, t, note.dur, vel * 0.30, 0.09 * atk, 0.30);
       break;
     }
+    /* THE LOW HALF OF THE PALETTE.
+     *
+     * Asked for after the barbarian: dropping the register moved the notes down
+     * and left the *timbres* where they were, and a brass band an octave lower
+     * is still a brass band playing high. "Более низкий по звучанию всех
+     * инструментов, а не только более глубокий бас."
+     *
+     * So every family gets a low relative — not a transposition, a different
+     * instrument. A tuba is not a trumpet an octave down: it has a slower
+     * attack, almost no bite, and its energy sits under 400 Hz. That is what
+     * has to be modelled, and none of it comes from moving a note.
+     *
+     * The bass track is left out on purpose: it already has `bassDrop`, and a
+     * part whose whole job is the bottom does not need a darker twin.
+     *
+     *   brass   → tuba        strings, fiddle → contra
+     *   choir   → basso       organ           → pedal
+     *   flute, whistle → bassflute            lute, harp, pizz → theorbo
+     *   glass, bell    → tamtam               pulse            → sub
+     */
+    case 'tuba': {
+      const stop = t + note.dur + 0.45;
+      const filt = ctx.createBiquadFilter();
+      filt.type = 'lowpass'; filt.Q.value = 0.8;
+      filt.frequency.setValueAtTime(120, t);
+      /* opens far less than the trumpet's 1100–3300: the whole point is that
+         it never gets bright, however hard it is blown */
+      filt.frequency.linearRampToValueAtTime(340 + 420 * vel, t + 0.14 * atk);
+      filt.frequency.linearRampToValueAtTime(260 + 220 * vel, t + note.dur);
+      filt.connect(out);
+      [-9 - rough * 16, 8 + rough * 16].forEach((c) =>
+        detuneOsc(ctx, 'sawtooth', f, c * spread(note.dur), t, stop).connect(filt));
+      detuneOsc(ctx, 'sine', f / 2, 0, t, stop).connect(filt);
+      env(ctx, out, t, note.dur, vel * 0.34, 0.11 * atk, 0.30);
+      break;
+    }
+    case 'contra':
+      /* cello and double bass rather than violins: the section moved down and
+         the top rolled off with it */
+      simple([-7, 0, 6], 760, 0.22, 0.34, 'sawtooth');
+      break;
+    case 'basso': {
+      const stop = t + note.dur + 0.8;
+      const filt = ctx.createBiquadFilter();
+      filt.type = 'lowpass'; filt.frequency.value = 620; filt.Q.value = 1.0;
+      filt.connect(out);
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 3.4;              /* slower than the choir's 4.6 */
+      const lfoAmt = ctx.createGain();
+      lfoAmt.gain.value = 4;
+      lfo.connect(lfoAmt);
+      lfo.start(t); lfo.stop(stop);
+      [-10, 0, 9].forEach((c) => {
+        const o = detuneOsc(ctx, 'sawtooth', f, c * spread(note.dur), t, stop);
+        lfoAmt.connect(o.detune);
+        o.connect(filt);
+      });
+      detuneOsc(ctx, 'sine', f / 2, 0, t, stop).connect(filt);
+      env(ctx, out, t, note.dur, vel * 0.26, 0.40 * atk, 0.65);
+      break;
+    }
+    case 'pedal': {
+      /* a sixteen-foot stop: the fundamental doubled an octave below, and the
+         upper ranks that make an organ sparkle simply not drawn */
+      const stop = t + note.dur + 0.30;
+      [[0.5, 0.34], [1, 0.16], [2, 0.05], [3, 0.02]].forEach(([mult, amp]) => {
+        const o = detuneOsc(ctx, 'sine', f * mult, 0, t, stop);
+        const g = ctx.createGain();
+        g.gain.value = amp;
+        o.connect(g); g.connect(out);
+      });
+      env(ctx, out, t, note.dur, vel * 0.70, 0.05 * atk, 0.18);
+      break;
+    }
+    case 'bassflute': {
+      /* the breath is the loudest part of a bass flute, and the tone the
+         quietest — the reverse of the ordinary one */
+      const stop = t + note.dur + 0.35;
+      const body = ctx.createBiquadFilter();
+      body.type = 'lowpass'; body.frequency.value = 700; body.Q.value = 0.7;
+      body.connect(out);
+      /* the octave below carries the tone; the written pitch is only a hint of
+         it, which is what a bass flute actually sounds like */
+      const sub1 = detuneOsc(ctx, 'triangle', f / 2, 0, t, stop);
+      const sg = ctx.createGain(); sg.gain.value = 0.85;
+      sub1.connect(sg); sg.connect(body);
+      const o = detuneOsc(ctx, 'sine', f, 0, t, stop);
+      const og2 = ctx.createGain(); og2.gain.value = 0.30;
+      o.connect(og2); og2.connect(body);
+      const breath = ctx.createBufferSource();
+      breath.buffer = noiseBuffer(ctx); breath.loop = true;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass'; bp.frequency.value = f * 0.7; bp.Q.value = 1.8;
+      const bg = ctx.createGain(); bg.gain.value = vel * 0.22;
+      breath.connect(bp); bp.connect(bg); bg.connect(out);
+      breath.start(t); breath.stop(stop);
+      env(ctx, out, t, note.dur, vel * 0.24, 0.18 * atk, 0.38);
+      break;
+    }
+    case 'tamtam': {
+      /* struck metal with no pitch to speak of: a low sine for the swing of it
+         under a long wash of filtered noise */
+      const stop = t + 3.0;
+      const src = ctx.createBufferSource();
+      src.buffer = noiseBuffer(ctx); src.loop = true;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass'; bp.frequency.value = f * 1.4; bp.Q.value = 1.2;
+      const ng = ctx.createGain();
+      ng.gain.setValueAtTime(0.0001, t);
+      ng.gain.exponentialRampToValueAtTime(vel * 0.20, t + 0.05 * atk);
+      ng.gain.exponentialRampToValueAtTime(0.0001, t + 1.8 + note.dur * 0.4);
+      src.connect(bp); bp.connect(ng); ng.connect(out);
+      src.start(t); src.stop(stop);
+      const o = detuneOsc(ctx, 'sine', f / 2, 0, t, stop);
+      const og = ctx.createGain();
+      og.gain.setValueAtTime(0.0001, t);
+      og.gain.exponentialRampToValueAtTime(vel * 0.16, t + 0.02);
+      og.gain.exponentialRampToValueAtTime(0.0001, t + 1.2 + note.dur * 0.3);
+      o.connect(og); og.connect(out);
+      break;
+    }
+    case 'sub': {
+      /* the synth with its top taken away: a sine doing the work, a saw only
+         there so it is not a test tone */
+      const stop = t + note.dur + 0.25;
+      const filt = ctx.createBiquadFilter();
+      filt.type = 'lowpass'; filt.Q.value = 1.1;
+      filt.frequency.setValueAtTime(180, t);
+      filt.frequency.linearRampToValueAtTime(300 + 260 * vel, t + 0.10 * atk);
+      filt.connect(out);
+      detuneOsc(ctx, 'sine', f / 2, 0, t, stop).connect(filt);
+      detuneOsc(ctx, 'sawtooth', f, 6 + rough * 20, t, stop).connect(filt);
+      env(ctx, out, t, note.dur, vel * 0.34, 0.03 * atk, 0.20);
+      break;
+    }
+
     /* THE OUTDOOR VOICES.
      *
      * Not instruments. Kenny asked for birdsong and the rustle of trees for the
