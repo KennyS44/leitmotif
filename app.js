@@ -133,6 +133,7 @@ const EN = {
     rendering: 'Rendering…',
     position: 'Position in the theme',
     /* the arrow is tied to the last word, or it wraps onto a line of its own */
+    build: 'Build your own character and hear it →',
     bench: 'A/B — two versions of one edit, side by side →',
     blind: 'Blind test — can you tell whose theme is playing? →',
     footTitle: 'What is actually happening',
@@ -257,6 +258,7 @@ function build() {
   window.PRESETS.forEach((ch) => list.appendChild(cardFor(ch)));
 
   document.getElementById('roll').textContent = T('roll');
+  document.getElementById('build-link').textContent = T('build');
   document.getElementById('bench-link').textContent = T('bench');
   document.getElementById('blind-link').textContent = T('blind');
   document.documentElement.lang = Sheet.lang;

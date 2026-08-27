@@ -531,6 +531,55 @@ which is the opposite of what pressed means everywhere else on the page. Styled
 like the version buttons it read as "selected" and the two groups looked like
 one. Struck through and dimmed says removed.
 
+## The builder, earlier than planned
+
+**`build.html` lets any sheet be played, not the fourteen I happened to choose.**
+The presets show what I decided to show; `blind.html` works around that by
+rolling strangers, but a roll cannot be aimed. To ask what a dwarf paladin
+sounds like you have to be able to say dwarf, and paladin, and nothing else.
+
+README listed a character builder under "not here yet", gated behind the blind
+test. That gate was about *finishing* a product nobody could yet judge — and
+this is the instrument for judging it, so the gate does not apply. The gallery
+stays the front page until the sound is settled; then this becomes the way in.
+
+Nothing about the inputs is new: class, race and alignment required, an optional
+subclass **or** second class but never both, tags from a fixed list, five at
+most. The exclusive rule is enforced in the form now instead of being applied
+silently afterwards.
+
+*Genre still comes from `variants.js`.* One copy of the decisions rather than a
+second that drifts. When the sound is settled it moves into `mapping.js` and
+that line goes away.
+
+## Rendering is too slow, and it is the figures that made it so
+
+Measured in this container, one theme with its genre: **6 to 34 seconds** of
+compute for 30–55 seconds of audio. Bearable on a page you press play on;
+painful in a builder where every edit rebuilds.
+
+*Found by bisecting the tracks rather than guessing.* On the warlock — the worst
+— removing the background dropped it from 25.4 s to 13.1 s. **The pad is half
+the cost**, and it has 228 notes where before the accompaniment figures it would
+have had about 30. This is the bill for the figures, and the figures are worth
+it; the bill still has to be paid.
+
+*One fix already made.* `leaves` built about forty-five nodes per note — twenty
+separate noise sources each with a filter and a gain. As a colour that was
+merely wasteful; as a background under an arpeggio it was ruinous, and it is why
+a druid took **71 seconds** while a paladin took 16 for a longer theme. One
+source with its band walked across the note is the same rustle: 71 s → 22 s.
+
+*And a wait before rendering.* Picking five tags is five edits in a row; with no
+pause the builder started five renders and threw four away. The sheet updates at
+once, the sound waits 400 ms for the hand to stop.
+
+*Not fixed:* the remaining cost is real work — every pad note is a full voice
+with its own oscillators and filter. Sharing one voice across the notes of a
+chord is the obvious next move and it is a refactor, not a tweak. These numbers
+come from a headless container and a real machine will be faster; by how much I
+cannot measure from here.
+
 ## Open
 
 **Four classes are almost never heard alone.** `rollCharacter` gives a subclass

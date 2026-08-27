@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leitmotif — build a character</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="head">
+  <div class="lang" role="group" aria-label="Language">
+    <button type="button" data-lang="en" aria-pressed="true">EN</button>
+    <button type="button" data-lang="ru" aria-pressed="false">RU</button>
+  </div>
+  <p class="head__kicker" id="kicker"></p>
+  <h1 class="head__title" id="title"></h1>
+  <p class="head__lede" id="lede"></p>
+</header>
+
+<main class="list">
+  <article class="card" id="builder">
+
+    <div class="field">
+      <label class="field__label" for="cls" id="l-cls"></label>
+      <select id="cls" class="pick__select"></select>
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="sub" id="l-sub"></label>
+      <select id="sub" class="pick__select"></select>
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="second" id="l-second"></label>
+      <select id="second" class="pick__select"></select>
+      <p class="field__note" id="n-fork"></p>
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="race" id="l-race"></label>
+      <select id="race" class="pick__select"></select>
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="alignment" id="l-alignment"></label>
+      <select id="alignment" class="pick__select"></select>
+    </div>
+
+    <div class="field">
+      <p class="field__label" id="l-traits"></p>
+      <div class="tagpick" id="traits" role="group"></div>
+    </div>
+
+    <div class="field">
+      <p class="field__label" id="l-looks"></p>
+      <div class="tagpick" id="looks" role="group"></div>
+    </div>
+
+    <div class="card__actions">
+      <button id="roll" type="button"></button>
+      <button id="clear" type="button"></button>
+    </div>
+  </article>
+
+  <article class="card" id="result">
+    <p class="card__sheet" id="sheet"></p>
+    <ul class="tags" id="chosen-tags"></ul>
+
+    <div class="card__actions">
+      <button class="btn--play" id="play" type="button"></button>
+      <span class="ready" id="ready" aria-live="polite"></span>
+    </div>
+
+    <div class="transport">
+      <input class="seek" id="seek" type="range" min="0" max="100" step="1" value="0"
+             aria-label="Position in the theme">
+      <p class="time"><span class="time__now">0:00</span> / <span class="time__total">0:00</span></p>
+    </div>
+
+    <p class="card__why" id="why"></p>
+  </article>
+</main>
+
+<footer class="foot">
+  <p><a href="index.html" id="back"></a></p>
+  <p class="foot__fine" id="fine"></p>
+</footer>
+
+<script src="mapping.js"></script>
+<script src="music.js"></script>
+<script src="render.js"></script>
+<script src="player.js"></script>
+<script src="characters.js"></script>
+<script src="i18n.js"></script>
+<script src="labels.js"></script>
+<script src="variants.js"></script>
+<script src="build.js"></script>
+</body>
+</html>

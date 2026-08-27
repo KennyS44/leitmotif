@@ -1329,24 +1329,30 @@ function playNote(ctx, dest, voice, note, p) {
       env(ctx, out, t, note.dur, vel * 0.13, 0.45 * atk, 0.6);
       bed.start(t); bed.stop(t + note.dur + 0.7);
 
-      const grains = 10 + Math.floor(vel * 14);
-      for (let i = 0; i < grains; i += 1) {
-        const at = t + rnd() * Math.max(0.12, note.dur);
-        const src = ctx.createBufferSource();
-        src.buffer = noiseBuffer(ctx);
-        const hp = ctx.createBiquadFilter();
-        hp.type = 'bandpass';
-        hp.frequency.value = f * 5 + 1800 + rnd() * 1600;
-        hp.Q.value = 0.8;
-        const g = ctx.createGain();
-        const life = 0.09 + rnd() * 0.14;
-        g.gain.setValueAtTime(0.0001, at);
-        /* a rustle rises rather than clicks: no instant attack anywhere */
-        g.gain.linearRampToValueAtTime(vel * (0.012 + rnd() * 0.022), at + life * 0.4);
-        g.gain.exponentialRampToValueAtTime(0.0001, at + life);
-        src.connect(hp); hp.connect(g); g.connect(out);
-        src.start(at); src.stop(at + life + 0.05);
+      /* The grain on top used to be twenty separate sources per note, each with
+         its own filter and gain — around forty-five nodes for one rustle. As a
+         *colour* that was merely wasteful; as a *pad* under an arpeggio figure
+         it was ruinous, and it is what made a druid take seventy seconds to
+         render when a paladin took sixteen for a longer theme.
+         *
+         * The same sound comes out of one more source whose band is walked
+         * across the note: a rustle is a filter moving over noise, and it never
+         * needed to be twenty of them. */
+      const grain = ctx.createBufferSource();
+      grain.buffer = noiseBuffer(ctx);
+      grain.loop = true;
+      const gb = ctx.createBiquadFilter();
+      gb.type = 'bandpass';
+      gb.Q.value = 1.6;
+      const life = Math.max(0.12, note.dur);
+      const steps = Math.min(8, Math.max(3, Math.round(life * 6)));
+      for (let i = 0; i < steps; i += 1) {
+        gb.frequency.setValueAtTime(f * 5 + 1800 + rnd() * 2200, t + (i / steps) * life);
       }
+      const gg = ctx.createGain();
+      gg.gain.value = vel * 0.06;
+      grain.connect(gb); gb.connect(gg); gg.connect(out);
+      grain.start(t); grain.stop(t + life + 0.3);
       break;
     }
     case 'birds': {

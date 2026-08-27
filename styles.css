@@ -512,3 +512,39 @@ button:disabled:hover { border-color: var(--line); color: var(--text); }
   text-decoration: line-through;
   opacity: 0.75;
 }
+
+/* ------------------------------------------------------ the character form
+   One control per line at 390px: a label above its input reads faster than a
+   label beside it, and nothing here is narrow enough to sit in pairs. */
+.field { margin-bottom: 16px; }
+
+.field__label {
+  display: block;
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.field__note {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.tagpick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tagpick__btn {
+  min-height: 44px;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.tagpick__btn[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
