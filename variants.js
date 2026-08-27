@@ -49,7 +49,20 @@
  *   плут       — танго; бас всё ещё однотипный
  *   следопыт   — барокко
  *   чародей    — trance / goa
- */
+ *
+ * ---
+ *
+ * ALSO THIS ROUND: the kit belongs to the race now. Four genres have let go of
+ * theirs — друид, колдун, монах, чародей — because in those four the kit was a
+ * choice I made, not something the genre demands. Where the kit IS the genre it
+ * stays: индастриал is heavy, танго is wood, балканская духовая is heavy,
+ * классицизм is martial, and хорал / органум / барокко / импрессионизм keep
+ * their explicit `perc: null`, because "no drums at all" is a statement too.
+ *
+ * So on those four classes the drums now change when the race changes. That is
+ * the point, and it is also the risk: four verdicts already given were given
+ * with the old kit under them. If one of them turns, say which and it goes
+ * straight back. */
 
 const CHOSEN = {
 
@@ -96,7 +109,7 @@ const CHOSEN = {
 
   druid: { label: 'минимализм / процессы',
     comp: 'arpeggio', bassFig: 'pedal', bassVoice: 'harp',
-    lead: 'flute', pad: 'leaves', hue: 'birds', perc: 'tick',
+    lead: 'flute', pad: 'leaves', hue: 'birds',
     tempo: 104, swing: 0, cellMod: +0.45, orn: 0.00, sync: 0.10,
     cadence: 0.30, tension: 0.10, legato: 0.70, attack: 0.85, rev: 0.50,
     rough: 0, drone: false, reg: 0, dyn: 0.60 },
@@ -110,14 +123,14 @@ const CHOSEN = {
 
   warlock: { label: 'darkwave',
     comp: 'offbeat', bassFig: 'sparse', bassVoice: 'dark',
-    lead: 'dark', pad: 'pulse', perc: 'tick',
+    lead: 'dark', pad: 'pulse',
     tempo: 96, swing: 0, cellMod: +0.20, orn: 0.15, sync: 0.35,
     cadence: 0.35, tension: 0.60, legato: 0.90, attack: 0.70, rev: 0.55,
     rough: 0.20, drone: true, reg: -6, dyn: 0.70 },
 
   monk: { label: 'минимализм дозора',
     comp: 'arpeggio', bassFig: 'sparse', bassVoice: 'harp',
-    lead: 'whistle', pad: 'strings', perc: 'tick',
+    lead: 'whistle', pad: 'strings',
     tempo: 96, swing: 0, cellMod: -0.35, orn: 0.10, sync: 0.10,
     cadence: 0.45, tension: 0.20, legato: 1.50, attack: 0.55, rev: 0.60,
     rough: 0, drone: true, reg: -2, dyn: 0.58 },
@@ -146,7 +159,7 @@ const CHOSEN = {
 
   sorcerer: { label: 'trance / goa',
     comp: 'pulse', bassFig: 'walking', bassVoice: 'pulse',
-    lead: 'pulse', pad: 'dark', perc: 'light',
+    lead: 'pulse', pad: 'dark',
     tempo: 138, swing: 0, cellMod: +0.50, orn: 0.10, sync: 0.30,
     cadence: 0.40, tension: 0.30, legato: 0.60, attack: 0.90, rev: 0.50,
     rough: 0, drone: true, rise: +0.40, reg: 0, dyn: 0.74 },

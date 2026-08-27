@@ -414,17 +414,98 @@ function watch(name, held, detail) {
   });
 
   /* Two characters of the same class must be relatives, not twins: the same
-     allowed intervals and direction, a different tune. */
+     allowed intervals and direction, a different tune.
+   *
+     They used to be told apart here by name alone. That stopped being a fair
+     test the moment the name stopped reaching the music — and it stopped
+     reaching it on purpose, because a rename is not a new character. So the
+     paladins now differ the way paladins actually differ — in what they look
+     like.
+   *
+     A whole row of them rather than a pair, because a pair can agree by luck:
+     'old' and 'young' happen to draw the same tune, and a check that rests on
+     one coin-flip reports the coin, not the code. */
   const kin = await page.evaluate(() => {
-    const a = { name: 'A', cls: 'paladin', race: 'human', alignment: 'LG', traits: ['brave'], looks: ['old'] };
-    const b = { name: 'B', cls: 'paladin', race: 'human', alignment: 'LG', traits: ['brave'], looks: ['old'] };
-    const pa = window.Leitmotif.characterToParams(a);
-    const pb = window.Leitmotif.characterToParams(b);
+    const looks = ['old', 'young', 'stern', 'gentle', 'huge', 'scarred', 'elegant'];
     const dir = (m) => Math.sign(m[m.length - 1]);
-    return { same: pa.motif.join() === pb.motif.join(), sameDir: dir(pa.motif) === dir(pb.motif) };
+    const drawn = looks.map((l) => window.Leitmotif.characterToParams(
+      { name: 'A', cls: 'paladin', race: 'human', alignment: 'LG', traits: ['brave'], looks: [l] }).motif);
+    return {
+      distinct: new Set(drawn.map((m) => m.join())).size,
+      total: drawn.length,
+      allRise: drawn.every((m) => dir(m) > 0),
+    };
   });
-  check('two paladins are not twins', !kin.same);
-  check('two paladins are still relatives', kin.sameDir);
+  check('two paladins are not twins', kin.distinct >= 4,
+    `${kin.distinct} tunes across ${kin.total} paladins`);
+  check('two paladins are still relatives', kin.allRise);
+
+  /* And the other direction, which is the new rule: renaming a character must
+     change nothing at all. This is the check that would have caught the old
+     behaviour if it had existed then. */
+  const renamed = await page.evaluate(() => {
+    const base = { cls: 'ranger', race: 'dwarf', alignment: 'CN', traits: ['wise'], looks: ['scarred'] };
+    const one = window.Leitmotif.characterToParams({ ...base, name: 'Someone' });
+    const two = window.Leitmotif.characterToParams({ ...base, name: 'Somebody Else Entirely' });
+    return JSON.stringify(one) === JSON.stringify(two);
+  });
+  check('a rename changes nothing', renamed);
+
+  /* The race's gapped scale, both halves of it: the gaps have to be real, and
+     the three protected degrees have to survive every race that asks for
+     them. A race that could delete the alignment's colour note would be a
+     field quietly erasing another field. */
+  const scales = await page.evaluate(() => {
+    const M = window.Mapping;
+    const sizes = new Set();
+    let colourKept = true;
+    let neverTooThin = true;
+    Object.keys(M.RACES).forEach((race) => {
+      Object.keys(M.ALIGNMENTS).forEach((alignment) => {
+        const p = window.Leitmotif.characterToParams(
+          { name: 'x', cls: 'fighter', race, alignment });
+        sizes.add(p.scaleSize);
+        if (p.scaleSize < 5) neverTooThin = false;
+        if (p.gaps.includes(0) || p.gaps.includes(4)) colourKept = false;
+        if (p.colour !== null && p.gaps.includes(p.colour)) colourKept = false;
+      });
+    });
+    return { sizes: [...sizes].sort(), colourKept, neverTooThin };
+  });
+  check('races gap the scale differently', scales.sizes.length >= 3,
+    `${scales.sizes.join(', ')} notes`);
+  check('the tonic, the fifth and the colour note always survive', scales.colourKept);
+  check('no melody is left with fewer than five notes', scales.neverTooThin);
+
+  /* And the gap has to hold in the rendered notes, not only in the table. It
+     did not, the first time: the lifted third phrase let one off-scale note
+     through per theme, which is enough to blur the whole point of the gap. */
+  const offScale = await page.evaluate(() => {
+    const M = window.Mapping;
+    let worst = null;
+    Object.keys(M.RACES).forEach((race) => {
+      ['LG', 'TN', 'CE'].forEach((alignment) => {
+        const p = window.Leitmotif.characterToParams({ name: 'x', cls: 'ranger', race, alignment });
+        if (!p.gaps.length) return;
+        const s = window.Leitmotif.composeScore(p);
+        const tonic = ((s.tracks.lead[s.tracks.lead.length - 1].midi % 12) + 12) % 12;
+        const ok = p.mode.filter((_, i) => !p.gaps.includes(i)).map((x) => (x + tonic) % 12);
+        const bad = s.tracks.lead.filter((n) => !ok.includes(((n.midi % 12) + 12) % 12)).length;
+        if (!worst || bad > worst.bad) worst = { race, alignment, bad, of: s.tracks.lead.length };
+      });
+    });
+    return worst;
+  });
+  check('the melody stays inside the race’s scale', offScale.bad === 0,
+    `worst is ${offScale.bad} of ${offScale.of} (${offScale.race} ${offScale.alignment})`);
+
+  /* The kit is the race's now, so races have to actually disagree about it. */
+  const kits = await page.evaluate(() => {
+    const M = window.Mapping;
+    return [...new Set(Object.keys(M.RACES).map((race) => window.Leitmotif
+      .characterToParams({ name: 'x', cls: 'wizard', race, alignment: 'TN' }).perc))];
+  });
+  check('races bring different kits', kits.length >= 4, kits.join(', '));
 
   /* --- determinism --------------------------------------------------- */
   const twice = await page.evaluate(() => {

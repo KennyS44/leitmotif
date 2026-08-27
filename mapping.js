@@ -12,10 +12,13 @@
  *
  *   class      -> the motif itself, and the instruments playing it
  *   subclass   -> a short fork off the motif, in a second voice
- *   race       -> the rhythmic cell everything else is built on
- *   alignment  -> mode and harmonic tension
+ *   race       -> the rhythmic cell, the gapped scale, and the kit
+ *   alignment  -> key, mode, colour note and harmonic tension
  *   traits     -> how densely the cell is filled, how wide the motif reaches
  *   looks      -> register, timbre and space
+ *
+ * The name owns nothing. It is a label a player changes on a whim, and music
+ * that changes with it would be telling the listener something untrue.
  *
  * The two that carry identity are the motif and the cell. Everything else
  * dresses them: a trait can widen or thin the theme, but it cannot invent a
@@ -42,17 +45,34 @@ const MODES = {
 };
 
 /* The nine alignments. The good/evil axis picks brightness, the law/chaos axis
-   decides how far the mode is allowed to wander from the plain one. */
+   decides how far the mode is allowed to wander from the plain one.
+ *
+ * Alignment also owns the KEY. It used to come from the character's name, and
+ * that was wrong on the only ground that matters here: a name is not a trait.
+ * A character can be renamed on a whim without becoming a different person, so
+ * a rename must not become a different piece of music. Named by Kenny,
+ * 2026-08-27.
+ *
+ * So the key joins the two things alignment already owns — the mode and the
+ * colour note — and it is laid out by harmonic distance rather than at random.
+ * Lawful good is home: plain C. Every other alignment steps around the circle
+ * of fifths in proportion to how far it stands from that home, alternating
+ * sharpwards and flatwards. Two alignments that are neighbours in outlook are
+ * neighbours in key; chaotic evil is as far round as it is possible to get. */
 const ALIGNMENTS = {
-  LG: { label: 'Lawful Good',     mode: 'ionian',     sync: 0.05, tension: -0.10, cadence: 1.00 },
-  NG: { label: 'Neutral Good',    mode: 'ionian',     sync: 0.18, tension: -0.05, cadence: 0.80 },
-  CG: { label: 'Chaotic Good',    mode: 'lydian',     sync: 0.40, tension:  0.05, cadence: 0.55 },
-  LN: { label: 'Lawful Neutral',  mode: 'dorian',     sync: 0.05, tension:  0.00, cadence: 1.00 },
-  TN: { label: 'True Neutral',    mode: 'dorian',     sync: 0.20, tension:  0.05, cadence: 0.75 },
-  CN: { label: 'Chaotic Neutral', mode: 'mixolydian', sync: 0.45, tension:  0.15, cadence: 0.45 },
-  LE: { label: 'Lawful Evil',     mode: 'aeolian',    sync: 0.05, tension:  0.25, cadence: 0.95 },
-  NE: { label: 'Neutral Evil',    mode: 'phrygian',   sync: 0.22, tension:  0.35, cadence: 0.70 },
-  CE: { label: 'Chaotic Evil',    mode: 'locrian',    sync: 0.50, tension:  0.50, cadence: 0.35 },
+  /* root: C · G · D · F · B♭ · A · E♭ · E · A♭ — 0, +1, −1, +2, −2, +3, −3,
+     +4, −4 fifths from home, in order of how far the alignment stands from
+     lawful good. Kept inside one octave from A2 so no key is louder than
+     another by sitting lower. */
+  LG: { label: 'Lawful Good',     mode: 'ionian',     root: 48, sync: 0.05, tension: -0.10, cadence: 1.00 },
+  NG: { label: 'Neutral Good',    mode: 'ionian',     root: 55, sync: 0.18, tension: -0.05, cadence: 0.80 },
+  CG: { label: 'Chaotic Good',    mode: 'lydian',     root: 50, sync: 0.40, tension:  0.05, cadence: 0.55 },
+  LN: { label: 'Lawful Neutral',  mode: 'dorian',     root: 53, sync: 0.05, tension:  0.00, cadence: 1.00 },
+  TN: { label: 'True Neutral',    mode: 'dorian',     root: 46, sync: 0.20, tension:  0.05, cadence: 0.75 },
+  CN: { label: 'Chaotic Neutral', mode: 'mixolydian', root: 51, sync: 0.45, tension:  0.15, cadence: 0.45 },
+  LE: { label: 'Lawful Evil',     mode: 'aeolian',    root: 45, sync: 0.05, tension:  0.25, cadence: 0.95 },
+  NE: { label: 'Neutral Evil',    mode: 'phrygian',   root: 52, sync: 0.22, tension:  0.35, cadence: 0.70 },
+  CE: { label: 'Chaotic Evil',    mode: 'locrian',    root: 56, sync: 0.50, tension:  0.50, cadence: 0.35 },
 };
 
 /* Class owns a FAMILY of motifs, not one motif.
@@ -292,36 +312,74 @@ function weightedPick(list, lead, seed) {
  *   beats — beats in a bar (4 = common time, 3 = a broad three, 5 = odd)
  *   cell  — one slot per subdivision: 2 = accent, 1 = note, 0 = rest
  *   swing — how far the off-beats are pushed late, 0 to about 0.4
+ *   gaps  — scale degrees this people's melodies leave out
+ *   perc  — the kit
  *
  * The melody takes its onsets from the cell, the bass plays its accents and the
- * kit plays all of it — one grid, so the parts sound like one band. */
+ * kit plays all of it — one grid, so the parts sound like one band.
+ *
+ * GAPS is the strongest channel a race has, and the newest. The alignment hands
+ * over a seven-note mode; a race is allowed to refuse some of those notes for
+ * its melodies. Five notes out of seven is not a duller version of seven — it
+ * is a categorically different sound, the one every listener already files
+ * under "old" or "somewhere else", and it is heard on the first phrase without
+ * any training. It is also orthogonal to the mode: a gapped scale is possible
+ * inside any of the nine alignments, so the two never cancel.
+ *
+ * The harmony underneath keeps all seven. A pentatonic tune over a full bed is
+ * exactly how gapped scales are played everywhere they are actually played;
+ * gapping the chords too would only make the piece thin.
+ *
+ * Three degrees are never taken away, whatever a race asks for: the tonic, the
+ * fifth, and the mode's own colour note. Removing the colour note would let a
+ * race quietly delete the alignment, and nothing here is allowed to erase
+ * another field.
+ *
+ * PERC moved here from the class this round. A kit is what a people plays, not
+ * what a profession plays — there is no drum that means "wizard", and there are
+ * plenty that mean "these mountains". A genre still overrides it where the kit
+ * IS the genre (industrial, tango, Balkan brass) or where the genre has no kit
+ * at all (chant, organum). */
 const RACES = {
-  human:      { label: 'Human',      beats: 4, cell: [2, 0, 1, 0, 2, 0, 1, 0] },
+  human:      { label: 'Human',      beats: 4, cell: [2, 0, 1, 0, 2, 0, 1, 0],
+                gaps: [], perc: 'martial' },
   elf:        { label: 'Elf', hue: 'flute',       beats: 4, cell: [2, 0, 0, 1, 0, 0, 2, 0, 0, 1, 0, 0],
+                gaps: [3], perc: 'frame',
                 reg: +4,  orn: +0.25, legato: 1.40, rev: +0.10 },
   dwarf:      { label: 'Dwarf', hue: 'organ',      beats: 4, swing: 0.18, cell: [2, 0, 0, 2, 0, 0, 1, 0],
+                gaps: [1, 5], perc: 'heavy',
                 reg: -12, orn: -0.10, dyn: +0.10, drone: true },
   halfling:   { label: 'Halfling', hue: 'fiddle',   beats: 4, swing: 0.33, cell: [2, 0, 1, 1, 0, 1, 0, 1],
+                gaps: [6], perc: 'wood',
                 reg: +5,  tempo: +10, legato: 0.65, leap: +0.10 },
   gnome:      { label: 'Gnome', hue: 'glass',      beats: 5, cell: [2, 1, 0, 1, 1, 0, 1, 1, 0, 1],
+                gaps: [], perc: 'light',
                 reg: +7,  tempo: +12, orn: +0.30, leap: +0.15, legato: 0.70 },
   tiefling:   { label: 'Tiefling', hue: 'whistle',   beats: 5, swing: 0.12, cell: [2, 0, 1, 0, 0, 1, 1, 0, 1, 0],
+                gaps: [], perc: 'tick',
                 tension: +0.25, orn: +0.15, reg: -3 },
   dragonborn: { label: 'Dragonborn', hue: 'brass', beats: 3, cell: [2, 0, 0, 0, 1, 0],
+                gaps: [2, 6], perc: 'martial',
                 reg: -5,  tempo: -8, dyn: +0.15 },
   /* Orc is a Player's Handbook species in its own right; Half-Orc and Half-Elf
      are kept because tables that still use the older rules have them. */
   orc:        { label: 'Orc', hue: 'horn',        beats: 4, cell: [2, 0, 1, 0, 2, 1, 0, 1],
+                gaps: [1, 6], perc: 'heavy',
                 reg: -9,  tempo: +6, dyn: +0.18, orn: -0.20, rough: 0.15 },
   halforc:    { label: 'Half-Orc', hue: 'lute',   beats: 4, cell: [2, 0, 0, 1, 2, 0, 0, 1],
+                gaps: [6], perc: 'heavy',
                 reg: -7,  tempo: +4, dyn: +0.15, orn: -0.15 },
   halfelf:    { label: 'Half-Elf', hue: 'harp',   beats: 4, cell: [2, 0, 1, 0, 1, 0, 2, 0, 0, 1, 0, 0],
+                gaps: [3], perc: 'light',
                 reg: +3,  orn: +0.12, legato: 1.15 },
   tabaxi:     { label: 'Tabaxi', hue: 'fiddle',     beats: 4, swing: 0.40, cell: [0, 1, 1, 0, 2, 0, 1, 1],
+                gaps: [3, 6], perc: 'wood',
                 tempo: +10, sync: +0.20, legato: 0.60, leap: +0.15 },
   goliath:    { label: 'Goliath', hue: 'whistle',    beats: 3, cell: [2, 0, 0, 1, 0, 0],
+                gaps: [2, 5], perc: 'heavy',
                 reg: -10, tempo: -6, dyn: +0.20 },
   aasimar:    { label: 'Aasimar', hue: 'glass',    beats: 4, cell: [2, 0, 0, 0, 1, 0, 2, 0, 0, 1, 0, 0],
+                gaps: [], perc: 'frame',
                 reg: +5,  rev: +0.20, tension: -0.10 },
 };
 
@@ -471,7 +529,10 @@ function characterToParams(ch) {
   const second = ch.second ? CLASSES[ch.second] : null;
   p.lead = cls.lead;
   p.pad = cls.pad;
-  p.perc = (sub && sub.perc) || cls.perc || (second && second.perc) || null;
+  /* The kit belongs to the race now. An oath still overrides it — a Tempest
+     cleric is heavy drums whoever his people are — and a class keeps its own
+     as the fallback for a race that names none. */
+  p.perc = (sub && sub.perc) || race.perc || cls.perc || null;
   /* The second class answers in the lead's own instrument, not in one of its
      own. Its own timbre was tried, quietened, and still heard as a second tune
      running beside the first — quietening a voice does not stop it being a
@@ -530,9 +591,17 @@ function characterToParams(ch) {
   p.modeName = align.mode;
   p.colour = MODES[align.mode].colour;
 
-  /* The key itself comes from the name, so two identical builds with different
-     names are still distinguishable, but the character stays recognisable. */
-  p.root = 45 + (hashString(ch.name || '') % 12);   /* A2 upwards */
+  /* The race's gapped scale. The tonic, the fifth and the mode's colour note
+     are protected, and the melody is never cut below five notes — below that a
+     theme stops having anywhere to go. `gaps` are degree indices, and the
+     melody line in music.js is what obeys them; the harmony keeps all seven. */
+  p.gaps = (race.gaps || [])
+    .filter((d) => d !== 0 && d !== 4 && d !== p.colour)
+    .slice(0, 2);
+  p.scaleSize = p.mode.length - p.gaps.length;
+
+  /* The key comes from the alignment, not from the name. See ALIGNMENTS. */
+  p.root = align.root || 48;
   if (p.strain > 0.45) p.root = 45 + ((p.root - 45 + 5) % 12);
 
   p.tempo = clamp(Math.round(p.tempo), 52, 168);
@@ -622,9 +691,14 @@ function hashString(str) {
   return h >>> 0;
 }
 
+/* The name is deliberately NOT in here. A character can be renamed without
+   becoming a different character, so a rename must not redraw his melody — and
+   the seed is what picks which melody he gets out of his class's family. The
+   cost, accepted: two sheets filled in identically now sound identical, which
+   is the honest answer, because they ARE the same character twice. */
 function characterSeed(ch) {
   const parts = [
-    ch.name || '', ch.cls || '', ch.second || '', ch.race || '', ch.alignment || '',
+    ch.cls || '', ch.second || '', ch.race || '', ch.alignment || '',
     (ch.traits || []).slice().sort().join(','),
     (ch.looks || []).slice().sort().join(','),
   ];

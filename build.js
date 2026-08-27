@@ -48,9 +48,9 @@ const EN = {
   none: '—',
   fork: 'A subclass bends the motif this character already has; a second class'
       + ' brings its own. They are different statements, so only one at a time.',
-  nameNote: 'The name sets the key, and picks which melody this character gets'
-      + ' out of its class\u2019s family. Two identical sheets under different'
-      + ' names are relatives, not copies.',
+  nameNote: 'A label only. A character can be renamed without becoming someone'
+      + ' else, so the name changes nothing you can hear \u2014 everything below it'
+      + ' does.',
   left: (n) => `${n} left`,
   full: 'five is the limit',
   play: 'Play theme', stop: 'Stop', preparing: 'preparing…',
@@ -73,9 +73,9 @@ const RU = {
   none: '—',
   fork: 'Подкласс отгибает мотив, который у персонажа уже есть; второй класс'
       + ' приносит свой. Это разные высказывания, поэтому только одно из двух.',
-  nameNote: 'Имя задаёт тональность и выбирает, какая именно мелодия достанется'
-      + ' персонажу из семейства его класса. Два одинаковых листа под разными'
-      + ' именами — родственники, а не копии.',
+  nameNote: 'Только подпись. Персонажа можно переименовать, не сделав его'
+      + ' другим человеком, поэтому имя не меняет ничего в звуке — всё'
+      + ' остальное ниже меняет.',
   left: (n) => `осталось ${n}`,
   full: 'больше пяти нельзя',
   play: 'Слушать тему', stop: 'Стоп', preparing: 'собираю…',
@@ -178,13 +178,15 @@ function describe() {
   const voice = (v) => Sheet.label('voices', v, v);
   const parts = [p.lead, p.pad, p.counter, p.hue].filter(Boolean).map(voice).join(', ');
   const kit = p.perc ? Sheet.label('kits', p.perc, p.perc) : '—';
-  /* The key belongs on the readout because the name is an input, and the key is
-     most of what the name does. Without it, typing a new name changed the music
-     and the page said nothing had happened. */
+  /* Key, mode and how many notes the scale has. The note count is here so that
+     changing the race shows on the page as well as in the ear — a gapped scale
+     is the race's loudest channel and it has no other label anywhere. */
   const KEYS = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+  /* 5, 6 and 7 all take "нот" in Russian, so no plural table is needed here */
+  const notes = Sheet.lang === 'ru' ? `${p.scaleSize} нот` : `${p.scaleSize} notes`;
   el('why').textContent = `${parts} · ${kit} · `
     + `${KEYS[((p.root % 12) + 12) % 12]} ${Sheet.label('modes', p.modeName, p.modeName)}`
-    + ` · ${Math.round(p.tempo)} bpm`;
+    + `, ${notes} · ${Math.round(p.tempo)} bpm`;
 }
 
 /* A change to the sheet is a different piece of music, so whatever was rendered
@@ -246,10 +248,10 @@ el('second').addEventListener('change', (e) => {
   refresh();
 });
 
-/* The name is not decoration. It picks the key and it seeds the draw from the
-   class's family, so it is one of the inputs the map actually reads — and the
-   first version of this page left it hard-coded, which quietly put every
-   character built here in one key playing one draw. */
+/* The name reaches the sheet line above the player and nothing else. It used to
+   set the key and seed the melody draw, and that was wrong: renaming a
+   character does not make him a different character, so it must not make a
+   different theme. `refresh` is still called so the sheet line keeps up. */
 el('name').addEventListener('input', (e) => { ch.name = e.target.value; refresh(); });
 
 el('race').addEventListener('change', (e) => { ch.race = e.target.value; refresh(); });

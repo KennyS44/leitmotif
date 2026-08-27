@@ -69,8 +69,8 @@ function whyLine() {
   const parts = [p.lead, p.pad, p.counter, p.hue].filter(Boolean).map(voice).join(', ');
   const kit = p.perc ? Sheet.label('kits', p.perc, p.perc) : 'без ударных';
   const swung = p.swing ? `, со сдвигом ${p.swing}` : '';
-  return `${parts} · ${kit} · ${Sheet.label('modes', p.modeName, p.modeName)} лад`
-    + ` · ${p.beats} доли, ${Math.round(p.tempo)} уд/мин${swung}`;
+  return `${parts} · ${kit} · ${Sheet.label('modes', p.modeName, p.modeName)} лад,`
+    + ` ${p.scaleSize} нот · ${p.beats} доли, ${Math.round(p.tempo)} уд/мин${swung}`;
 }
 
 /* ---------------------------------------------------------------- versions */

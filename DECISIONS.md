@@ -679,3 +679,72 @@ on the final chord recovers most of the cleanliness of removing it (Ilsabet
 stay exactly as they were. Lifting the pad up out of the band instead is
 unreliable — it helps on Ilsabet, does nothing on Nymeria and is *worse* than
 today on Marrow.
+
+## The name owns nothing
+
+The key and the melody draw used to come from the character's name. Kenny threw
+it out in one line: *«имя персонаж может сменить просто так, но это не меняет
+его характер»*. That is the whole argument. A rename is not a rewrite, so a
+rename must not produce a different piece of music — and one that does is
+telling the listener something untrue about the sheet.
+
+So the name is gone from `characterSeed` and gone from the key.
+
+**The key went to alignment**, which already owned the mode and the colour note.
+It is laid out by harmonic distance rather than at random: lawful good is home,
+plain C, and every other alignment steps around the circle of fifths in
+proportion to how far it stands from that home — C, G, D, F, B♭, A, E♭, E, A♭.
+Alignments that are neighbours in outlook are neighbours in key.
+
+**The cost, accepted:** two sheets filled in identically now sound identical.
+That is the honest answer, because they *are* the same character twice. The
+check that used to prove otherwise — two paladins told apart by name alone —
+was measuring the name, so it now tells them apart by what they look like, over
+a row of seven rather than a pair. `a rename changes nothing` is the new check,
+and it is the one that would have caught this if it had existed.
+
+## Two more channels for a race
+
+A race owned four things: the cell, the metre, the swing and one instrument. All
+four are fine and all four are quiet. Two louder ones added, chosen because
+neither takes anything away from the genre layer:
+
+**The gapped scale.** The alignment hands over seven degrees; a race is allowed
+to refuse some of them *for its melodies*. Five notes out of seven is not a
+duller seven — it is the sound every listener already files under "old" or
+"somewhere else", and it lands on the first phrase with no training at all. It
+is orthogonal to the mode, because any key can be pentatonic, so the two fields
+never cancel. Dwarf and goliath sing six, dragonborn and tabaxi five, human and
+gnome and tiefling and aasimar all seven.
+
+Three degrees are protected whatever a race asks for: the tonic, the fifth and
+the mode's own colour note. A race that could delete the colour note would be
+one field quietly erasing another, and nothing here is allowed to do that.
+
+The harmony keeps all seven. A pentatonic tune over a full bed is how gapped
+scales are played everywhere they are actually played; gapping the chords too
+would only make the piece thin.
+
+**The kit.** Moved off the class. There is no drum that means "wizard" and there
+are plenty that mean "these mountains". A genre still overrides it where the kit
+*is* the genre — индастриал is heavy, танго is wood, балканская духовая is
+heavy, классицизм is martial — and where the genre has no kit at all, which is a
+statement of its own: хорал, органум, барокко, импрессионизм keep `perc: null`.
+Four genres let go of theirs: друид, колдун, монах, чародей. Those four had a
+kit because I picked one, not because the genre demanded it.
+
+**Two defects the measurement turned up on the way.**
+
+The melody's bottom was a hard clamp, `Math.max(floor, …)`. A note pushed off
+the bottom landed on whatever pitch the floor happened to be — a pitch the
+character's scale might not contain. It lifts by whole octaves now, which keeps
+the degree. The same reasoning was already written out for the colour track a
+month ago and had not been carried across.
+
+And the colour note was exempted from the race's gaps in *every* phrase,
+including the third, which is lifted a third. `lift + colour` up there is a
+different degree wearing the colour note's name, and exempting it was letting
+exactly one off-scale note into every gapped theme — one note in thirty-three on
+a dwarf ranger. Enough to blur the only thing the gap is for. The check
+`the melody stays inside the race's scale` now renders every race against three
+alignments and counts, rather than trusting the table.

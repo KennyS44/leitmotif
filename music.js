@@ -94,6 +94,28 @@ function scalePitch(p, degree) {
   return p.mode[idx] + oct * 12;
 }
 
+/* The race's gapped scale, applied to the MELODY only.
+ *
+ * A note the race does not sing is bent down to the nearest one it does. Down
+ * rather than up on purpose: a gapped scale is heard as the notes that are
+ * there, and folding a missing degree onto its lower neighbour is what makes
+ * the neighbour ring twice as often — which is precisely what a pentatonic
+ * melody sounds like. Folding upwards instead would brighten the line every
+ * time it was bent, and the theme would drift sharp over four phrases.
+ *
+ * The harmony never calls this. A five-note tune over a seven-note bed is the
+ * whole point; gapping the chords as well would just make the piece thin. */
+function melodic(p, degree) {
+  const skip = p.gaps;
+  if (!skip || !skip.length) return degree;
+  const n = p.mode.length;
+  for (let d = 0; d < n; d += 1) {
+    const idx = (((degree - d) % n) + n) % n;
+    if (!skip.includes(idx)) return degree - d;
+  }
+  return degree;
+}
+
 /* ---------------------------------------------------------------- rhythm */
 
 /* The race brings a bar of rhythm: 2 = accent, 1 = note, 0 = rest. Traits are
@@ -217,6 +239,16 @@ function composeScore(p) {
   const bassRoot = p.root + BASS + stack + (p.bassDrop || 0);
   const padRoot = p.root + PAD + stack;
   const floor = padRoot + 12;        /* nothing melodic may sink into the pad */
+  /* Lift by whole octaves rather than clamp. Clamping lands the note on
+     whatever pitch the floor happens to be, which is a note the character's
+     scale may not even contain — and that is how one foreign pitch was getting
+     into every gapped scale, once or twice a theme. An octave keeps the degree.
+     The same reasoning is already written out at the colour track below. */
+  const above = (midi) => {
+    let m = midi;
+    while (m < floor) m += 12;
+    return m;
+  };
   /* A motif that dips below its starting note would drag the melody down into
      the chord. Rather than clamping the notes — which would flatten the shape —
      the whole melody is lifted by however far its motif reaches down. */
@@ -459,6 +491,16 @@ function composeScore(p) {
         const isColour = p.colour !== null && role === 'vary' && last;
         if (isColour) degree = lift + p.colour;
         if (lastBar && last) degree = 0;
+        /* The colour note is exempt from the race's gaps — it is the one note
+           the alignment is allowed to insist on, and a gap must not delete it.
+         *
+         * Only where it really is the colour note, though. The third phrase is
+         * lifted a third, and `lift + p.colour` up there is a different degree
+         * wearing the colour note's name. Exempting that one was letting
+         * exactly one off-scale note into every gapped theme — measured on a
+         * dwarf ranger, one note in thirty-three, heard as the tune briefly
+         * forgetting which scale it was in. */
+        if (!isColour || lift !== 0) degree = melodic(p, degree);
 
         const next = i + 1 < onsets.length ? onsets[i + 1] : SLOTS;
         const gap = (next - slot) * slotDur;
@@ -469,7 +511,7 @@ function composeScore(p) {
         if ((p.flags || {}).brittle && !accent && barRand() < 0.18) return;
         tracks.lead.push({
           t: t + timeOf(slot),
-          midi: Math.max(floor, leadCentre + scalePitch(p, degree)),
+          midi: above(leadCentre + scalePitch(p, degree)),
           dur,
           accent,
           colour: isColour && !(lastBar && last),
@@ -484,7 +526,7 @@ function composeScore(p) {
         if (accent && barRand() < p.orn * 0.5 && slot > 0) {
           tracks.lead.push({
             t: t + timeOf(slot) - slotDur * 0.26,
-            midi: leadCentre + scalePitch(p, degree + 1),
+            midi: leadCentre + scalePitch(p, melodic(p, degree + 1)),
             dur: slotDur * 0.22,
             vel: p.dyn * 0.55,
             grace: true,
@@ -509,7 +551,7 @@ function composeScore(p) {
           gaps.slice(0, fork.length).forEach((slot, i) => {
             tracks.counter.push({
               t: t + timeOf(slot),
-              midi: Math.max(floor, counterCentre + scalePitch(p, lift + fork[i])),
+              midi: above(counterCentre + scalePitch(p, melodic(p, lift + fork[i]))),
               dur: Math.max(MIN_NOTE, slotDur * 1.5 * p.legato) + OVERLAP,
               vel: p.dyn * 0.44 * swell,
             });
