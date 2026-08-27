@@ -41,12 +41,16 @@ const EN = {
   lede: 'Class, race and alignment make the theme; tags only colour it. Every'
       + ' sheet sounds the same on every machine, so the one you build here is'
       + ' the one anybody else would hear.',
+  name: 'Name',
   cls: 'Class', sub: 'Subclass', second: 'Second class',
   race: 'Race', alignment: 'Alignment',
   traits: 'Traits', looks: 'Looks',
   none: '—',
   fork: 'A subclass bends the motif this character already has; a second class'
       + ' brings its own. They are different statements, so only one at a time.',
+  nameNote: 'The name sets the key, and picks which melody this character gets'
+      + ' out of its class\u2019s family. Two identical sheets under different'
+      + ' names are relatives, not copies.',
   left: (n) => `${n} left`,
   full: 'five is the limit',
   play: 'Play theme', stop: 'Stop', preparing: 'preparing…',
@@ -62,12 +66,16 @@ const RU = {
   lede: 'Класс, раса и мировоззрение делают тему; теги её только красят. Любой'
       + ' лист звучит одинаково на любой машине — значит, собранное здесь'
       + ' услышит и любой другой.',
+  name: 'Имя',
   cls: 'Класс', sub: 'Подкласс', second: 'Второй класс',
   race: 'Раса', alignment: 'Мировоззрение',
   traits: 'Черты', looks: 'Внешность',
   none: '—',
   fork: 'Подкласс отгибает мотив, который у персонажа уже есть; второй класс'
       + ' приносит свой. Это разные высказывания, поэтому только одно из двух.',
+  nameNote: 'Имя задаёт тональность и выбирает, какая именно мелодия достанется'
+      + ' персонажу из семейства его класса. Два одинаковых листа под разными'
+      + ' именами — родственники, а не копии.',
   left: (n) => `осталось ${n}`,
   full: 'больше пяти нельзя',
   play: 'Слушать тему', stop: 'Стоп', preparing: 'собираю…',
@@ -170,8 +178,13 @@ function describe() {
   const voice = (v) => Sheet.label('voices', v, v);
   const parts = [p.lead, p.pad, p.counter, p.hue].filter(Boolean).map(voice).join(', ');
   const kit = p.perc ? Sheet.label('kits', p.perc, p.perc) : '—';
+  /* The key belongs on the readout because the name is an input, and the key is
+     most of what the name does. Without it, typing a new name changed the music
+     and the page said nothing had happened. */
+  const KEYS = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
   el('why').textContent = `${parts} · ${kit} · `
-    + `${Sheet.label('modes', p.modeName, p.modeName)} · ${Math.round(p.tempo)} bpm`;
+    + `${KEYS[((p.root % 12) + 12) % 12]} ${Sheet.label('modes', p.modeName, p.modeName)}`
+    + ` · ${Math.round(p.tempo)} bpm`;
 }
 
 /* A change to the sheet is a different piece of music, so whatever was rendered
@@ -233,6 +246,12 @@ el('second').addEventListener('change', (e) => {
   refresh();
 });
 
+/* The name is not decoration. It picks the key and it seeds the draw from the
+   class's family, so it is one of the inputs the map actually reads — and the
+   first version of this page left it hard-coded, which quietly put every
+   character built here in one key playing one draw. */
+el('name').addEventListener('input', (e) => { ch.name = e.target.value; refresh(); });
+
 el('race').addEventListener('change', (e) => { ch.race = e.target.value; refresh(); });
 el('alignment').addEventListener('change', (e) => { ch.alignment = e.target.value; refresh(); });
 
@@ -257,10 +276,12 @@ el('play').addEventListener('click', () => {
 el('roll').addEventListener('click', () => {
   const rolled = window.rollCharacter();
   Object.assign(ch, {
+    name: rolled.name,
     cls: rolled.cls, sub: rolled.sub, second: rolled.second,
     race: rolled.race, alignment: rolled.alignment,
     traits: rolled.traits.slice(0, MAX_TAGS), looks: rolled.looks.slice(0, MAX_TAGS),
   });
+  el('name').value = ch.name;
   fillSelects();
   fillTags('traits'); fillTags('looks');
   refresh();
@@ -287,10 +308,11 @@ function words() {
   el('kicker').textContent = t().kicker;
   el('title').textContent = t().title;
   el('lede').textContent = t().lede;
-  ['cls', 'sub', 'second', 'race', 'alignment'].forEach((k) => {
+  ['name', 'cls', 'sub', 'second', 'race', 'alignment'].forEach((k) => {
     el(`l-${k}`).textContent = t()[k];
   });
   el('n-fork').textContent = t().fork;
+  el('n-name').textContent = t().nameNote;
   el('roll').textContent = t().roll;
   el('clear').textContent = t().clear;
   el('back').textContent = t().back;
@@ -301,6 +323,7 @@ function words() {
   });
 }
 
+el('name').value = ch.name;
 words();
 fillSelects();
 fillTags('traits');
